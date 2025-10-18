@@ -15,22 +15,26 @@ export default function FeedbackListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchFeedbacks = async () => {
-      try {
-        const data = await apiFetch('/feedback');
-        setFeedbacks(data);
-      } catch (err: any) {
-        console.error('Erro ao buscar feedbacks:', err);
-        setError(err?.message || 'Erro desconhecido ao carregar feedbacks.');
-      } finally {
-        setLoading(false);
-      }
-    };
+useEffect(() => {
+  const fetchFeedbacks = async () => {
+    try {
+      const data = await apiFetch('/feedback');
+      const mapped = data.map((fb: any) => ({
+        id: fb.id,
+        message: fb.text,
+        createdAt: fb.createdAt,
+      }));
+      setFeedbacks(mapped);
+    } catch (err: any) {
+      console.error('Erro ao buscar feedbacks:', err);
+      setError(err?.message || 'Erro desconhecido ao carregar feedbacks.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchFeedbacks();
-  }, []);
-
+  fetchFeedbacks();
+}, []);
   if (loading)
     return <p className="p-4 text-gray-700">Carregando feedbacks...</p>;
 
