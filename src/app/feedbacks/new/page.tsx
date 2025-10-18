@@ -9,7 +9,7 @@ export default function NewFeedbackPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    await fetch(`http://localhost:3000/feedback`, {
+    await fetch(`http://localhost:4000/feedback`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, message }),

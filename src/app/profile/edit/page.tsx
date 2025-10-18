@@ -67,7 +67,6 @@ export default function EditProfilePage() {
 
   return (
     <>
-      <Header />
       <main className="max-w-xl mx-auto mt-10 p-6 border rounded-lg shadow">
         <h1 className="text-2xl font-bold mb-4">Editar Perfil</h1>
         <form onSubmit={handleSubmit} className="space-y-4">

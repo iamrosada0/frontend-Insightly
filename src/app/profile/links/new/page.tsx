@@ -12,7 +12,7 @@ export default function NewLinkPage() {
     e.preventDefault();
     const token = localStorage.getItem('token');
 
-    await fetch('http://localhost:3000/users/links', {
+    await fetch('http://localhost:4000/users/links', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

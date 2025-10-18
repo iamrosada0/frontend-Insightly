@@ -14,7 +14,7 @@ export default function EditLinkPage() {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    fetch(`http://localhost:3000/users/links`, {
+    fetch(`http://localhost:4000/users/links`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())
