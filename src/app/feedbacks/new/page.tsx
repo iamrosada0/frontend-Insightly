@@ -1,74 +1,69 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import { useState } from 'react';
-import { apiFetch } from '@/lib/api'; 
+import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { apiFetch } from '@/lib/api';
+import { StatusHandler } from '@/components/StatusHandler';
+import { User, ApiError } from '@/types';
 
-export default function NewFeedbackPage() {
-  const [username, setUsername] = useState('');
-  const [message, setMessage] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState<string | null>(null);
+export default function UserSelectionPage() {
+  const [users, setUsers] = useState<User[] | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-
+  const fetchUsers = useCallback(async () => {
     try {
-      await apiFetch('/feedback', {
-        method: 'POST',
-        body: JSON.stringify({ username, message }),
-      });
-
-      setSuccess('✅ Feedback enviado com sucesso!');
-      setUsername('');
-      setMessage('');
-    } catch (err: any) {
-      console.error('Erro ao enviar feedback:', err);
-      setError(err?.message || 'Erro desconhecido ao enviar feedback.');
+      const data = await apiFetch<User[]>('/users');
+      setUsers(data ?? []);
+    } catch (err: unknown) {
+      const apiError = err as ApiError;
+      console.error('Erro ao carregar usuários:', apiError);
+      setError(apiError.message || 'Erro desconhecido ao carregar usuários.');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  const handleUserSelect = useCallback(
+    (username: string) => {
+      router.push(`/feedbacks/new/${encodeURIComponent(username)}`);
+    },
+    [router],
+  );
 
   return (
-    <div className="max-w-md mx-auto p-6">
-      <h1 className="text-xl font-semibold mb-4">Enviar Feedback Anônimo</h1>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          type="text"
-          placeholder="Usuário (ex: luisrosada)"
-          className="w-full border p-2 rounded"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          required
-        />
-
-        <textarea
-          placeholder="Escreva sua mensagem..."
-          className="w-full border p-2 rounded min-h-[120px]"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          required
-        />
-
-        <button
-          type="submit"
-          disabled={loading}
-          className={`w-full bg-green-600 text-white px-4 py-2 rounded transition ${
-            loading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-green-700'
-          }`}
-        >
-          {loading ? 'Enviando...' : 'Enviar'}
-        </button>
-
-        {success && <p className="text-green-600 mt-2">{success}</p>}
-        {error && <p className="text-red-600 mt-2">{error}</p>}
-      </form>
-    </div>
+    <>
+      <StatusHandler loading={loading} error={error} loadingMessage="Carregando usuários..." />
+      {!loading && !error && (
+        <section className="max-w-xl mx-auto p-6">
+          <h1 className="text-2xl font-semibold mb-4">Escolha um usuário para enviar feedback</h1>
+          <ul className="space-y-2" role="list">
+            {users?.map((user) => (
+              <li
+                key={user.id}
+                className="border p-3 rounded hover:bg-gray-100 cursor-pointer focus:bg-gray-100 transition-colors"
+                onClick={() => handleUserSelect(user.username)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleUserSelect(user.username);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                aria-label={`Enviar feedback para ${user.name}`}
+              >
+                {user.name} ({user.username})
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </>
   );
 }
