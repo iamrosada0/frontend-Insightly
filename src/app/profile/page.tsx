@@ -1,131 +1,152 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-"use client";
-import { useEffect, useState } from "react";
-import { apiFetch } from "@/lib/api";
-import { useRouter } from "next/navigation";
-import { getUsernameFromToken, getToken } from "@/lib/auth";
+'use client';
 
-type LinkType = {
-  id: number;
-  title: string;
-  url: string;
-};
-
-type FeedbackType = {
-  id: number;
-  text: string;
-  createdAt: string;
-};
+import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { apiFetch } from '@/lib/api';
+import { getToken, getUsernameFromToken } from '@/lib/auth';
+import { StatusHandler } from '@/components/StatusHandler';
+import { UserProfileResponse, Link as TypeLink, Feedback, ApiError } from '@/types';
 
 export default function ProfilePage() {
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
-  const [links, setLinks] = useState<LinkType[]>([]);
-  const [feedbacks, setFeedbacks] = useState<FeedbackType[]>([]);
+  const [user, setUser] = useState<UserProfileResponse | null>(null);
+  const [links, setLinks] = useState<TypeLink[]>([]);
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchProfile = useCallback(async (username: string) => {
+    try {
+      const data = await apiFetch<UserProfileResponse>(`/users/${username}`);
+      if (data) {
+        setUser(data);
+        setLinks(data.links ?? []);
+        setFeedbacks(data.feedbacks ?? []);
+      } else {
+        setError('Perfil não encontrado.');
+      }
+    } catch (err: unknown) {
+      const apiError = err as ApiError;
+      console.error('Erro ao carregar perfil:', apiError);
+      setError(apiError.message || 'Erro desconhecido ao carregar perfil.');
+      router.push('/');
+    } finally {
+      setLoading(false);
+    }
+  }, [router]);
 
   useEffect(() => {
     const token = getToken();
     const username = getUsernameFromToken();
 
     if (!token || !username) {
-      router.replace("/");
+      setError('Usuário não autenticado');
+      router.push('/');
       return;
     }
 
     fetchProfile(username);
-  }, []);
+  }, [router, fetchProfile]);
 
-  async function fetchProfile(username: string) {
-    try {
-      const res = await apiFetch(`/users/${username}`, {
-        headers: { Authorization: `Bearer ${getToken()}` },
-      });
-      setUser(res);
-      setLinks(res.links || []);
-      setFeedbacks(
-        (res.feedbacks || []).map((f: any) => ({
-          id: f.id,
-          text: f.text,
-          createdAt: f.createdAt,
-        }))
-      );
-    } catch (err) {
-      console.error(err);
-      router.push("/");
-    } finally {
-      setLoading(false);
-    }
-  }
+  const handleDeleteLink = useCallback(
+    async (id: number) => {
+      if (!confirm('Tem certeza que deseja excluir este link?')) return;
 
-  const handleDeleteLink = async (id: number) => {
-    if (!confirm("Tem certeza que deseja excluir este link?")) return;
-
-    try {
-      await apiFetch(`/users/links/${id}`, { method: "DELETE" });
-      setLinks((prev) => prev.filter((l) => l.id !== id));
-    } catch (err: any) {
-      console.error("Erro ao excluir link:", err);
-      alert(err?.message || "Erro desconhecido ao excluir o link.");
-    }
-  };
-
-  if (loading) return <div className="p-8 text-center">Carregando...</div>;
-  if (!user) return <div className="p-8 text-center">Erro ao carregar perfil.</div>;
+      try {
+        await apiFetch<void>(`/users/links/${id}`, { method: 'DELETE' });
+        setLinks((prev) => (prev ?? []).filter((link) => link.id !== id));
+      } catch (err: unknown) {
+        const apiError = err as ApiError;
+        console.error('Erro ao excluir link:', apiError);
+        setError(apiError.message || 'Erro desconhecido ao excluir o link.');
+      }
+    },
+    [],
+  );
 
   return (
-    <main className="p-8 max-w-3xl mx-auto space-y-6">
-      <h1 className="text-3xl font-bold">Meu Perfil</h1>
-
-      <section>
-        <h2 className="text-xl font-semibold mb-2">Informações Pessoais</h2>
-        <p><strong>Nome:</strong> {user.name}</p>
-        <p><strong>Bio:</strong> {user.bio}</p>
-      </section>
-
-      <section>
-        <h2 className="text-xl font-semibold mb-2">Meus Links</h2>
-        {links.length === 0 ? (
-          <p className="text-gray-500">Nenhum link ainda.</p>
-        ) : (
-          <ul className="space-y-2">
-            {links.map((l) => (
-              <li key={l.id} className="border p-3 rounded-md flex justify-between items-center">
-                <div>
-                  <strong>{l.title}</strong> –{" "}
-                  <a href={l.url} target="_blank" rel="noopener noreferrer" className="text-blue-600">
-                    {l.url}
-                  </a>
-                </div>
-                <button
-                  onClick={() => handleDeleteLink(l.id)}
-                  className="text-red-600 text-sm hover:underline"
-                >
-                  Excluir
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section>
-        <h2 className="text-xl font-semibold mb-2">Feedbacks Recebidos</h2>
-        {feedbacks.length === 0 ? (
-          <p className="text-gray-500">Nenhum feedback ainda.</p>
-        ) : (
-          <ul className="space-y-2">
-            {feedbacks.map((f) => (
-              <li key={f.id} className="border p-3 rounded-md">
-                {f.text}
-                <div className="text-xs text-gray-400">
-                  {new Date(f.createdAt).toLocaleString("pt-BR")}
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-    </main>
+    <>
+      <StatusHandler loading={loading} error={error} loadingMessage="Carregando perfil..." />
+      {!loading && !error && user && (
+        <main className="p-8 max-w-3xl mx-auto space-y-6">
+          <h1 className="text-3xl font-bold">Meu Perfil</h1>
+          <section aria-labelledby="personal-info">
+            <h2 id="personal-info" className="text-xl font-semibold mb-2">
+              Informações Pessoais
+            </h2>
+            <p>
+              <strong>Nome:</strong> {user.name}
+            </p>
+            <p>
+              <strong>Bio:</strong> {user.bio}
+            </p>
+            <Link
+              href="/profile/edit"
+              className="text-blue-600 hover:underline text-sm mt-2 inline-block"
+              aria-label="Editar perfil"
+            >
+              Editar Perfil
+            </Link>
+          </section>
+          <section aria-labelledby="links">
+            <h2 id="links" className="text-xl font-semibold mb-2">
+              Meus Links
+            </h2>
+            {links.length === 0 ? (
+              <p className="text-gray-500">Nenhum link ainda.</p>
+            ) : (
+              <ul className="space-y-2" role="list">
+                {links.map((link) => (
+                  <li
+                    key={link.id}
+                    className="border p-3 rounded-md flex justify-between items-center"
+                  >
+                    <div>
+                      <strong>{link.title}</strong> –{' '}
+                      <a
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600"
+                        aria-label={`Visitar ${link.title}`}
+                      >
+                        {link.url}
+                      </a>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteLink(link.id)}
+                      className="text-red-600 text-sm hover:underline"
+                      aria-label={`Excluir link ${link.title}`}
+                    >
+                      Excluir
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+          <section aria-labelledby="feedbacks">
+            <h2 id="feedbacks" className="text-xl font-semibold mb-2">
+              Feedbacks Recebidos
+            </h2>
+            {feedbacks.length === 0 ? (
+              <p className="text-gray-500">Nenhum feedback ainda.</p>
+            ) : (
+              <ul className="space-y-2" role="list">
+                {feedbacks.map((feedback) => (
+                  <li key={feedback.id} className="border p-3 rounded-md">
+                    <p>{feedback.text}</p>
+                    <div className="text-xs text-gray-400">
+                      {new Date(feedback.createdAt).toLocaleString('pt-BR')}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </main>
+      )}
+    </>
   );
 }

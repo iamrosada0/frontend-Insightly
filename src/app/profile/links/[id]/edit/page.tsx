@@ -1,9 +1,10 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { apiFetch } from '@/lib/api'; // ajusta o caminho conforme tua estrutura (ex: "@/utils/api" ou "@/services/api")
+import { apiFetch } from '@/lib/api';
+import { StatusHandler } from '@/components/StatusHandler';
+import { Link, ApiError } from '@/types';
 
 export default function EditLinkPage() {
   const { id } = useParams();
@@ -15,88 +16,111 @@ export default function EditLinkPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!id) return;
-
-    const fetchLink = async () => {
-      try {
-        const links = await apiFetch('/users/links');
-        const link = links.find((l: any) => l.id === Number(id));
-
-        if (link) {
-          setTitle(link.title);
-          setUrl(link.url);
-        } else {
-          setError('Link não encontrado.');
-        }
-      } catch (err: any) {
-        console.error('Erro ao carregar link:', err);
-        setError(err?.message || 'Erro ao carregar link.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchLink();
-  }, [id]);
-
-  const handleUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    setError(null);
+  const fetchLink = useCallback(async () => {
+    if (!id) {
+      setError('ID do link inválido');
+      setLoading(false);
+      return;
+    }
 
     try {
-      await apiFetch(`/users/links/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ title, url }),
-      });
+      const links = await apiFetch<Link[]>('/users/links');
+      const link = links?.find((l) => l.id === Number(id));
 
-      router.push('/profile/links');
-    } catch (err: any) {
-      console.error('Erro ao atualizar link:', err);
-      setError(err?.message || 'Erro desconhecido ao atualizar o link.');
+      if (link) {
+        setTitle(link.title);
+        setUrl(link.url);
+      } else {
+        setError('Link não encontrado.');
+      }
+    } catch (err: unknown) {
+      const apiError = err as ApiError;
+      console.error('Erro ao carregar link:', apiError);
+      setError(apiError.message || 'Erro desconhecido ao carregar link.');
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
-  };
+  }, [id]);
 
-  if (loading) return <p className="p-6">Carregando link...</p>;
-  if (error) return <p className="p-6 text-red-600">{error}</p>;
+  useEffect(() => {
+    fetchLink();
+  }, [fetchLink]);
+
+  const handleUpdate = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      setSaving(true);
+      setError(null);
+
+      try {
+        await apiFetch<void>(`/users/links/${id}`, {
+          method: 'PUT',
+          body: JSON.stringify({ title, url }),
+        });
+        router.push('/profile/links');
+      } catch (err: unknown) {
+        const apiError = err as ApiError;
+        console.error('Erro ao atualizar link:', apiError);
+        setError(apiError.message || 'Erro desconhecido ao atualizar link.');
+      } finally {
+        setSaving(false);
+      }
+    },
+    [id, router, title, url],
+  );
 
   return (
-    <div className="max-w-md mx-auto p-6">
-      <h1 className="text-xl font-semibold mb-4">Editar Link</h1>
-      <form onSubmit={handleUpdate} className="space-y-4">
-        <input
-          type="text"
-          className="w-full border p-2 rounded"
-          placeholder="Título do link"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          required
-        />
-
-        <input
-          type="url"
-          className="w-full border p-2 rounded"
-          placeholder="https://..."
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          required
-        />
-
-        <button
-          type="submit"
-          disabled={saving}
-          className={`bg-blue-600 text-white px-4 py-2 rounded w-full transition ${
-            saving ? 'opacity-70 cursor-not-allowed' : 'hover:bg-blue-700'
-          }`}
-        >
-          {saving ? 'Salvando...' : 'Atualizar'}
-        </button>
-
-        {error && <p className="text-red-600 text-sm">{error}</p>}
-      </form>
-    </div>
+    <>
+      <StatusHandler loading={loading} error={error} loadingMessage="Carregando link..." />
+      {!loading && !error && (
+        <div className="max-w-md mx-auto p-6">
+          <h1 className="text-xl font-semibold mb-4">Editar Link</h1>
+          <form onSubmit={handleUpdate} className="space-y-4">
+            <div>
+              <label htmlFor="title" className="block mb-1 font-semibold">
+                Título
+              </label>
+              <input
+                id="title"
+                type="text"
+                className="w-full border p-2 rounded"
+                placeholder="Título do link"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                required
+                aria-required="true"
+                aria-label="Título do link"
+              />
+            </div>
+            <div>
+              <label htmlFor="url" className="block mb-1 font-semibold">
+                URL
+              </label>
+              <input
+                id="url"
+                type="url"
+                className="w-full border p-2 rounded"
+                placeholder="https://..."
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                required
+                aria-required="true"
+                aria-label="URL do link"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={saving}
+              className={`w-full px-4 py-2 rounded transition bg-blue-600 text-white ${
+                saving ? 'opacity-70 cursor-not-allowed' : 'hover:bg-blue-700'
+              }`}
+              aria-label={saving ? 'Salvando link' : 'Atualizar link'}
+            >
+              {saving ? 'Salvando...' : 'Atualizar'}
+            </button>
+          </form>
+        </div>
+      )}
+    </>
   );
 }
