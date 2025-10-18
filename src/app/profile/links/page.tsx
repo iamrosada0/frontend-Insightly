@@ -32,6 +32,18 @@ export default function LinksPage() {
     fetchLinks();
   }, []);
 
+  const handleDelete = async (id: number) => {
+    if (!confirm('Tem certeza que deseja excluir este link?')) return;
+
+    try {
+      await apiFetch(`/users/links/${id}`, { method: 'DELETE' });
+      setLinks((prev) => prev.filter((link) => link.id !== id));
+    } catch (err: any) {
+      console.error('Erro ao excluir link:', err);
+      alert(err?.message || 'Erro desconhecido ao excluir o link.');
+    }
+  };
+
   if (loading) return <p className="p-4 text-gray-600">Carregando links...</p>;
   if (error) return <p className="p-4 text-red-600">⚠️ {error}</p>;
 
@@ -70,12 +82,20 @@ export default function LinksPage() {
                 </a>
               </div>
 
-              <Link
-                href={`/profile/links/${link.id}/edit`}
-                className="text-sm text-blue-500 hover:underline"
-              >
-                Editar
-              </Link>
+              <div className="flex gap-3">
+                <Link
+                  href={`/profile/links/${link.id}/edit`}
+                  className="text-sm text-blue-500 hover:underline"
+                >
+                  Editar
+                </Link>
+                <button
+                  onClick={() => handleDelete(link.id)}
+                  className="text-sm text-red-500 hover:underline"
+                >
+                  Excluir
+                </button>
+              </div>
             </li>
           ))}
         </ul>

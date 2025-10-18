@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiFetch } from '@/lib/api'; // ajusta o caminho conforme tua estrutura (ex: "@/utils/api" ou "@/services/api")
+import { apiFetch } from '@/lib/api'; 
 
 export default function NewLinkPage() {
   const [title, setTitle] = useState('');
