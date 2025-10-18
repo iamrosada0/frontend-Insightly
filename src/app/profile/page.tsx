@@ -26,11 +26,13 @@ export default function ProfilePage() {
 
 
   async function fetchProfile(username: string) {
+    console.log("Fetching profile for", username);
     try {
       const res = await apiFetch(`/users/${username}`, {
         headers: { Authorization: `Bearer ${getToken()}` },
       });
-      setUser(res.user);
+      console.log(res);
+      setUser(res);
       setLinks(res.links || []);
       setFeedbacks(res.feedbacks || []);
     } catch (err) {
