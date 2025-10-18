@@ -1,152 +1,109 @@
+// src/app/profile/page.tsx
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { apiFetch } from '@/lib/api';
-import { getToken, getUsernameFromToken } from '@/lib/auth';
+import { apiFetch, ApiError } from '@/lib/api';
 import { StatusHandler } from '@/components/StatusHandler';
-import { UserProfileResponse, Link as TypeLink, Feedback, ApiError } from '@/types';
+import { Feedback } from '@/types';
+
+
 
 export default function ProfilePage() {
-  const router = useRouter();
-  const [user, setUser] = useState<UserProfileResponse | null>(null);
-  const [links, setLinks] = useState<TypeLink[]>([]);
-  const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
+  const [feedbacks, setFeedbacks] = useState<Feedback[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const router = useRouter();
 
-  const fetchProfile = useCallback(async (username: string) => {
+  const fetchFeedbacks = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const data = await apiFetch<UserProfileResponse>(`/users/${username}`);
-      if (data) {
-        setUser(data);
-        setLinks(data.links ?? []);
-        // setFeedbacks(data.feedbacks ?? []);
-      } else {
-        setError('Perfil não encontrado.');
+      const token = localStorage.getItem('token');
+      if (!token) {
+        router.push('/login');
+        return;
       }
+      const data = await apiFetch<Feedback[]>(`/feedback?page=${page}&limit=10`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      setFeedbacks(data ?? []);
+      setHasMore((data?.length ?? 0) === 10); // Assume more if 10 items returned
     } catch (err: unknown) {
       const apiError = err as ApiError;
-      console.error('Erro ao carregar perfil:', apiError);
-      setError(apiError.message || 'Erro desconhecido ao carregar perfil.');
-      router.push('/');
+      if (apiError.status === 401) {
+        localStorage.removeItem('token');
+        router.push('/login');
+      } else {
+        setError(apiError.message || 'Erro ao carregar feedbacks');
+      }
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  }, [page, router]);
 
   useEffect(() => {
-    const token = getToken();
-    const username = getUsernameFromToken();
+    fetchFeedbacks();
+  }, [fetchFeedbacks]);
 
-    if (!token || !username) {
-      setError('Usuário não autenticado');
-      router.push('/');
-      return;
-    }
+  const handleNextPage = () => {
+    if (hasMore) setPage((prev) => prev + 1);
+  };
 
-    fetchProfile(username);
-  }, [router, fetchProfile]);
-
-  const handleDeleteLink = useCallback(
-    async (id: number) => {
-      if (!confirm('Tem certeza que deseja excluir este link?')) return;
-
-      try {
-        await apiFetch<void>(`/users/links/${id}`, { method: 'DELETE' });
-        setLinks((prev) => (prev ?? []).filter((link) => link.id !== id));
-      } catch (err: unknown) {
-        const apiError = err as ApiError;
-        console.error('Erro ao excluir link:', apiError);
-        setError(apiError.message || 'Erro desconhecido ao excluir o link.');
-      }
-    },
-    [],
-  );
+  const handlePrevPage = () => {
+    if (page > 1) setPage((prev) => prev - 1);
+  };
 
   return (
-    <>
-      <StatusHandler loading={loading} error={error} loadingMessage="Carregando perfil..." />
-      {!loading && !error && user && (
-        <main className="p-8 max-w-3xl mx-auto space-y-6">
-          <h1 className="text-3xl font-bold">Meu Perfil</h1>
-          <section aria-labelledby="personal-info">
-            <h2 id="personal-info" className="text-xl font-semibold mb-2">
-              Informações Pessoais
-            </h2>
-            <p>
-              <strong>Nome:</strong> {user.name}
-            </p>
-            <p>
-              <strong>Bio:</strong> {user.bio}
-            </p>
-            <Link
-              href="/profile/edit"
-              className="text-blue-600 hover:underline text-sm mt-2 inline-block"
-              aria-label="Editar perfil"
-            >
-              Editar Perfil
-            </Link>
-          </section>
-          <section aria-labelledby="links">
-            <h2 id="links" className="text-xl font-semibold mb-2">
-              Meus Links
-            </h2>
-            {links.length === 0 ? (
-              <p className="text-gray-500">Nenhum link ainda.</p>
-            ) : (
-              <ul className="space-y-2" role="list">
-                {links.map((link) => (
+    <main className="max-w-3xl mx-auto p-6 space-y-6">
+      <StatusHandler loading={loading} error={error} loadingMessage="Carregando feedbacks..." />
+      {!loading && !error && (
+        <section aria-labelledby="feedback-header">
+          <h1 id="feedback-header" className="text-2xl font-semibold mb-4">
+            Meus Feedbacks
+          </h1>
+          {feedbacks?.length === 0 ? (
+            <p className="text-gray-500">Nenhum feedback recebido.</p>
+          ) : (
+            <>
+              <ul className="space-y-4" role="list">
+                {feedbacks?.map((feedback) => (
                   <li
-                    key={link.id}
-                    className="border p-3 rounded-md flex justify-between items-center"
+                    key={feedback.id}
+                    className="border p-4 rounded bg-gray-50"
+                    role="listitem"
                   >
-                    <div>
-                      <strong>{link.title}</strong> –{' '}
-                      <a
-                        href={link.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600"
-                        aria-label={`Visitar ${link.title}`}
-                      >
-                        {link.url}
-                      </a>
-                    </div>
-                    <button
-                      onClick={() => handleDeleteLink(link.id)}
-                      className="text-red-600 text-sm hover:underline"
-                      aria-label={`Excluir link ${link.title}`}
-                    >
-                      Excluir
-                    </button>
+                    <p className="text-gray-800">{feedback.text}</p>
+                    <p className="text-sm text-gray-500 mt-2">
+                      Recebido em: {new Date(feedback.createdAt).toLocaleString()}
+                    </p>
                   </li>
                 ))}
               </ul>
-            )}
-          </section>
-          <section aria-labelledby="feedbacks">
-            <h2 id="feedbacks" className="text-xl font-semibold mb-2">
-              Feedbacks Recebidos
-            </h2>
-            {feedbacks.length === 0 ? (
-              <p className="text-gray-500">Nenhum feedback ainda.</p>
-            ) : (
-              <ul className="space-y-2" role="list">
-                {feedbacks.map((feedback) => (
-                  <li key={feedback.id} className="border p-3 rounded-md">
-                    <p>{feedback.text}</p>
-                    <div className="text-xs text-gray-400">
-                      {new Date(feedback.createdAt).toLocaleString('pt-BR')}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        </main>
+              <div className="flex justify-between mt-6">
+                <button
+                  onClick={handlePrevPage}
+                  disabled={page === 1}
+                  className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50 hover:bg-blue-700"
+                >
+                  Anterior
+                </button>
+                <button
+                  onClick={handleNextPage}
+                  disabled={!hasMore}
+                  className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50 hover:bg-blue-700"
+                >
+                  Próxima
+                </button>
+              </div>
+            </>
+          )}
+        </section>
       )}
-    </>
+    </main>
   );
 }
