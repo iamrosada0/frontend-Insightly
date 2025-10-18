@@ -1,126 +1,131 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { apiFetch } from '@/lib/api';
-import { StatusHandler } from '@/components/StatusHandler';
-import { Link, ApiError } from '@/types';
+import { apiFetch, ApiError } from '@/lib/api';
+import { getToken, clearToken } from '@/lib/auth';
+import { EditLinkForm, EditLinkFormData, editLinkSchema } from '@/components/EditLinkForm';
+import { Link } from '@/types';
 
-export default function EditLinkPage() {
+type FormErrors = Partial<Record<keyof EditLinkFormData | 'form', string>>;
+
+export default function EditLinkPage({ searchParams, ...props }: React.ComponentProps<'div'> & { searchParams?: unknown }) {
   const { id } = useParams();
   const router = useRouter();
-
-  const [title, setTitle] = useState('');
-  const [url, setUrl] = useState('');
+  const [formData, setFormData] = useState<EditLinkFormData>({ title: '', url: '' });
+  const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const fetchLink = useCallback(async () => {
-    if (!id) {
-      setError('ID do link inválido');
+  const fetchLink = useCallback(
+    async (linkId: string) => {
+      try {
+        const token = getToken();
+        if (!token) {
+          setErrors({ form: 'Usuário não autenticado' });
+          router.push('/auth/login');
+          return;
+        }
+
+        const links = await apiFetch<Link[]>('/users/links', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const link = links?.find((l) => l.id === Number(linkId));
+
+        if (link) {
+          setFormData({ title: link.title, url: link.url });
+        } else {
+          setErrors({ form: 'Link não encontrado' });
+        }
+      } catch (err: unknown) {
+        const apiError = err as ApiError;
+        console.error('Erro ao carregar link:', apiError);
+        setErrors({ form: apiError.message || 'Erro ao carregar link' });
+        if (apiError.status === 401) {
+          clearToken();
+          router.push('/auth/login');
+        } else {
+          router.push('/profile/links');
+        }
+      } finally {
+        setLoading(false);
+      }
+    },
+    [router],
+  );
+
+  useEffect(() => {
+    if (!id || Array.isArray(id)) {
+      setErrors({ form: 'ID do link inválido' });
       setLoading(false);
+      router.push('/profile/links');
       return;
     }
 
-    try {
-      const links = await apiFetch<Link[]>('/users/links');
-      const link = links?.find((l) => l.id === Number(id));
+    fetchLink(id);
+  }, [id, fetchLink, router]);
 
-      if (link) {
-        setTitle(link.title);
-        setUrl(link.url);
-      } else {
-        setError('Link não encontrado.');
-      }
-    } catch (err: unknown) {
-      const apiError = err as ApiError;
-      console.error('Erro ao carregar link:', apiError);
-      setError(apiError.message || 'Erro desconhecido ao carregar link.');
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
-
-  useEffect(() => {
-    fetchLink();
-  }, [fetchLink]);
-
-  const handleUpdate = useCallback(
+  const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
+      setErrors({});
       setSaving(true);
-      setError(null);
+
+      const result = editLinkSchema.safeParse(formData);
+      if (!result.success) {
+        const fieldErrors = result.error.flatten().fieldErrors;
+        setErrors({
+          title: fieldErrors.title?.[0],
+          url: fieldErrors.url?.[0],
+        });
+        setSaving(false);
+        return;
+      }
 
       try {
+        const token = getToken();
+        if (!token) {
+          setErrors({ form: 'Usuário não autenticado' });
+          router.push('/auth/login');
+          return;
+        }
+
         await apiFetch<void>(`/users/links/${id}`, {
           method: 'PUT',
-          body: JSON.stringify({ title, url }),
+          headers: { Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ title:formData.title, url:formData.url }),
         });
         router.push('/profile/links');
       } catch (err: unknown) {
         const apiError = err as ApiError;
         console.error('Erro ao atualizar link:', apiError);
-        setError(apiError.message || 'Erro desconhecido ao atualizar link.');
+        setErrors({ form: apiError.message || 'Erro ao salvar alterações' });
+        if (apiError.status === 401) {
+          clearToken();
+          router.push('/auth/login');
+        }
       } finally {
         setSaving(false);
       }
     },
-    [id, router, title, url],
+    [formData, id, router],
   );
 
+  const handleCancel = useCallback(() => {
+    router.push('/profile/links');
+  }, [router]);
+
   return (
-    <>
-      <StatusHandler loading={loading} error={error} loadingMessage="Carregando link..." />
-      {!loading && !error && (
-        <div className="max-w-md mx-auto p-6">
-          <h1 className="text-xl font-semibold mb-4">Editar Link</h1>
-          <form onSubmit={handleUpdate} className="space-y-4">
-            <div>
-              <label htmlFor="title" className="block mb-1 font-semibold">
-                Título
-              </label>
-              <input
-                id="title"
-                type="text"
-                className="w-full border p-2 rounded"
-                placeholder="Título do link"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
-                aria-required="true"
-                aria-label="Título do link"
-              />
-            </div>
-            <div>
-              <label htmlFor="url" className="block mb-1 font-semibold">
-                URL
-              </label>
-              <input
-                id="url"
-                type="url"
-                className="w-full border p-2 rounded"
-                placeholder="https://..."
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                required
-                aria-required="true"
-                aria-label="URL do link"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={saving}
-              className={`w-full px-4 py-2 rounded transition bg-blue-600 text-white ${
-                saving ? 'opacity-70 cursor-not-allowed' : 'hover:bg-blue-700'
-              }`}
-              aria-label={saving ? 'Salvando link' : 'Atualizar link'}
-            >
-              {saving ? 'Salvando...' : 'Atualizar'}
-            </button>
-          </form>
-        </div>
-      )}
-    </>
+    <main className="max-w-md mx-auto p-6" {...props}>
+      <EditLinkForm
+        formData={formData}
+        errors={errors}
+        loading={loading}
+        saving={saving}
+        onChange={setFormData}
+        onSubmit={handleSubmit}
+        onCancel={handleCancel}
+      />
+    </main>
   );
 }

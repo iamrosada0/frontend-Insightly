@@ -2,92 +2,82 @@
 
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiFetch } from '@/lib/api';
-import { StatusHandler } from '@/components/StatusHandler';
-import { ApiError } from '@/types';
+import { apiFetch, ApiError } from '@/lib/api';
+import { getToken, clearToken } from '@/lib/auth';
+import { CreateLinkForm, CreateLinkFormData, createLinkSchema } from '@/components/CreateLinkForm';
 
-export default function NewLinkPage() {
-  const [title, setTitle] = useState('');
-  const [url, setUrl] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+type FormErrors = Partial<Record<keyof CreateLinkFormData | 'form', string>>;
+
+export default function CreateLinkPage({ searchParams, ...props }: React.ComponentProps<'div'> & { searchParams?: unknown }) {
+  const [formData, setFormData] = useState<CreateLinkFormData>({ title: '', url: '' });
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [loading, setLoading] = useState(false); 
+  const [saving, setSaving] = useState(false);
   const router = useRouter();
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      setLoading(true);
-      setError(null);
+      setErrors({});
+      setSaving(true);
+
+      // Validate with Zod
+      const result = createLinkSchema.safeParse(formData);
+      if (!result.success) {
+        const fieldErrors = result.error.flatten().fieldErrors;
+        setErrors({
+          title: fieldErrors.title?.[0],
+          url: fieldErrors.url?.[0],
+        });
+        setSaving(false);
+        return;
+      }
 
       try {
+        const token = getToken();
+        if (!token) {
+          setErrors({ form: 'Usuário não autenticado' });
+          router.push('/auth/login');
+          return;
+        }
+
         await apiFetch<void>('/users/links', {
           method: 'POST',
-          body: JSON.stringify({ title, url }),
+          headers: { Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ title:formData.title, url:formData.url }),
+
         });
         router.push('/profile/links');
       } catch (err: unknown) {
         const apiError = err as ApiError;
         console.error('Erro ao criar link:', apiError);
-        setError(apiError.message || 'Erro desconhecido ao criar link.');
+        setErrors({ form: apiError.message || 'Erro ao salvar link' });
+        if (apiError.status === 401) {
+          clearToken();
+          router.push('/auth/login');
+        }
       } finally {
-        setLoading(false);
+        setSaving(false);
       }
     },
-    [router, title, url],
+    [formData, router],
   );
 
+  const handleCancel = useCallback(() => {
+    router.push('/profile/links');
+  }, [router]);
+
   return (
-    <>
-      <StatusHandler loading={loading} error={error} loadingMessage="Salvando..." />
-      {!loading && !error && (
-        <div className="max-w-md mx-auto p-6">
-          <h1 className="text-xl font-semibold mb-4">Adicionar Novo Link</h1>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="title" className="block mb-1 font-semibold">
-                Título
-              </label>
-              <input
-                id="title"
-                type="text"
-                placeholder="Título"
-                className="w-full border p-2 rounded"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
-                aria-required="true"
-                aria-label="Título do link"
-              />
-            </div>
-            <div>
-              <label htmlFor="url" className="block mb-1 font-semibold">
-                URL
-              </label>
-              <input
-                id="url"
-                type="url"
-                placeholder="https://..."
-                className="w-full border p-2 rounded"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                required
-                aria-required="true"
-                aria-label="URL do link"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className={`w-full px-4 py-2 rounded transition bg-green-600 text-white ${
-                loading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-green-700'
-              }`}
-              aria-label={loading ? 'Salvando link' : 'Salvar link'}
-            >
-              {loading ? 'Salvando...' : 'Salvar'}
-            </button>
-          </form>
-        </div>
-      )}
-    </>
+    <main className="max-w-md mx-auto p-6" {...props}>
+      <CreateLinkForm
+        formData={formData}
+        errors={errors}
+        loading={loading}
+        saving={saving}
+        onChange={setFormData}
+        onSubmit={handleSubmit}
+        onCancel={handleCancel}
+      />
+    </main>
   );
 }

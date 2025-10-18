@@ -1,4 +1,3 @@
-// src/app/me/page.tsx
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -38,7 +37,7 @@ export default function ProfilePage({ className, searchParams, ...props }: React
         router.push('/auth/login');
         return;
       }
-      const profileData = await apiFetch<UserProfileResponse>('/users/me', {
+      const profileData = await apiFetch<UserProfileResponse>('/users/me/profile', {
         headers: { Authorization: `Bearer ${token}` },
         method: 'GET',
       });

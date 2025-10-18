@@ -1,40 +1,58 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiFetch } from '@/lib/api';
-import { getToken, getUsernameFromToken } from '@/lib/auth';
-import { StatusHandler } from '@/components/StatusHandler';
-import { UserProfile, ApiError } from '@/types';
+import { apiFetch, ApiError } from '@/lib/api';
+import { getToken, getUsernameFromToken, clearToken } from '@/lib/auth';
+import { EditProfileForm, EditProfileFormData, editProfileSchema } from '@/components/EditProfileForm';
 
-export default function EditProfilePage() {
-  const router = useRouter();
-  const [form, setForm] = useState<UserProfile>({ name: '', bio: '' });
+type FormErrors = Partial<Record<keyof EditProfileFormData | 'form', string>>;
+
+export default function EditProfilePage({ searchParams, ...props }: React.ComponentProps<'div'> & { searchParams?: unknown }) {
+  const [formData, setFormData] = useState<EditProfileFormData>({ name: '', bio: '' });
+  const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
-  const fetchProfile = useCallback(async (username: string) => {
-    try {
-      const data = await apiFetch<UserProfile>(`/users/${username}`);
-      setForm(data ?? { name: '', bio: '' });
-    } catch (err: unknown) {
-      const apiError = err as ApiError;
-      console.error('Erro ao carregar perfil:', apiError);
-      setError(apiError.message || 'Erro ao carregar perfil');
-      router.push('/');
-    } finally {
-      setLoading(false);
-    }
-  }, [router]);
+  const fetchProfile = useCallback(
+    async (username: string) => {
+      try {
+        const token = getToken();
+        if (!token) {
+          setErrors({ form: 'Usuário não autenticado' });
+          router.push('/auth/login');
+          return;
+        }
+
+        const data = await apiFetch<EditProfileFormData>(`/users/${username}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setFormData(data ?? { name: '', bio: '' });
+      } catch (err: unknown) {
+        const apiError = err as ApiError;
+        console.error('Erro ao carregar perfil:', apiError);
+        setErrors({ form: apiError.message || 'Erro ao carregar perfil' });
+        if (apiError.status === 401) {
+          clearToken();
+          router.push('/auth/login');
+        } else {
+          router.push('/profile');
+        }
+      } finally {
+        setLoading(false);
+      }
+    },
+    [router],
+  );
 
   useEffect(() => {
     const token = getToken();
     const username = getUsernameFromToken();
 
     if (!token || !username) {
-      setError('Usuário não autenticado');
-      router.push('/');
+      setErrors({ form: 'Usuário não autenticado' });
+      router.push('/auth/login');
       return;
     }
 
@@ -44,24 +62,48 @@ export default function EditProfilePage() {
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
+      setErrors({});
       setSaving(true);
-      setError(null);
+
+      // Validação com Zod
+      const result = editProfileSchema.safeParse(formData);
+      if (!result.success) {
+        const fieldErrors = result.error.flatten().fieldErrors;
+        setErrors({
+          name: fieldErrors.name?.[0],
+          bio: fieldErrors.bio?.[0],
+        });
+        setSaving(false);
+        return;
+      }
 
       try {
+        const token = getToken();
+        if (!token) {
+          setErrors({ form: 'Usuário não autenticado' });
+          router.push('/auth/login');
+          return;
+        }
+
         await apiFetch<void>('/users/profile', {
           method: 'PUT',
-          body: JSON.stringify(form),
+          headers: { Authorization: `Bearer ${token}` },
+          body: JSON.stringify(formData),
         });
         router.push('/profile');
       } catch (err: unknown) {
         const apiError = err as ApiError;
         console.error('Erro ao atualizar perfil:', apiError);
-        setError(apiError.message || 'Erro ao salvar alterações');
+        setErrors({ form: apiError.message || 'Erro ao salvar alterações' });
+        if (apiError.status === 401) {
+          clearToken();
+          router.push('/auth/login');
+        }
       } finally {
         setSaving(false);
       }
     },
-    [router, form],
+    [formData, router],
   );
 
   const handleCancel = useCallback(() => {
@@ -69,61 +111,16 @@ export default function EditProfilePage() {
   }, [router]);
 
   return (
-    <>
-      <StatusHandler loading={loading} error={error} loadingMessage="Carregando informações do perfil..." />
-      {!loading && !error && (
-        <main className="max-w-xl mx-auto mt-10 p-6 border rounded-lg shadow">
-          <h1 className="text-2xl font-bold mb-4">Editar Perfil</h1>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="name" className="block mb-1 font-semibold">
-                Nome
-              </label>
-              <input
-                id="name"
-                type="text"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full border px-3 py-2 rounded-md"
-                required
-                aria-required="true"
-                aria-label="Nome do perfil"
-              />
-            </div>
-            <div>
-              <label htmlFor="bio" className="block mb-1 font-semibold">
-                Bio
-              </label>
-              <textarea
-                id="bio"
-                value={form.bio}
-                onChange={(e) => setForm({ ...form, bio: e.target.value })}
-                className="w-full border px-3 py-2 rounded-md"
-                rows={4}
-                aria-label="Bio do perfil"
-              />
-            </div>
-            <div className="flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="px-4 py-2 rounded-md border hover:bg-gray-100"
-                aria-label="Cancelar edição"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={saving}
-                className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-                aria-label="Salvar alterações do perfil"
-              >
-                {saving ? 'Salvando...' : 'Salvar Alterações'}
-              </button>
-            </div>
-          </form>
-        </main>
-      )}
-    </>
+    <main className="max-w-xl mx-auto p-6" {...props}>
+      <EditProfileForm
+        formData={formData}
+        errors={errors}
+        loading={loading}
+        saving={saving}
+        onChange={setFormData}
+        onSubmit={handleSubmit}
+        onCancel={handleCancel}
+      />
+    </main>
   );
 }
