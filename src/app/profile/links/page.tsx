@@ -1,7 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { apiFetch } from '@/lib/api';
 
 type LinkType = {
   id: number;
@@ -12,55 +14,72 @@ type LinkType = {
 export default function LinksPage() {
   const [links, setLinks] = useState<LinkType[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchLinks = async () => {
       try {
-        const token = localStorage.getItem('token');
-        const res = await fetch('http://localhost:3000/users/links', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
+        const data = await apiFetch('/users/links');
         setLinks(data);
-      } catch (err) {
-        console.error(err);
+      } catch (err: any) {
+        console.error('Erro ao buscar links:', err);
+        setError(err?.message || 'Erro desconhecido ao carregar os links.');
       } finally {
         setLoading(false);
       }
     };
+
     fetchLinks();
   }, []);
 
-  if (loading) return <p className="p-4">Carregando...</p>;
+  if (loading) return <p className="p-4 text-gray-600">Carregando links...</p>;
+  if (error) return <p className="p-4 text-red-600">⚠️ {error}</p>;
 
   return (
     <div className="max-w-2xl mx-auto p-6">
-      <h1 className="text-2xl font-semibold mb-4">Meus Links</h1>
-      <Link
-        href="/profile/links/new"
-        className="bg-blue-500 text-white px-3 py-2 rounded"
-      >
-        + Novo Link
-      </Link>
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-semibold">Meus Links</h1>
+        <Link
+          href="/profile/links/new"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition"
+        >
+          + Novo Link
+        </Link>
+      </div>
 
-      <ul className="mt-4 space-y-3">
-        {links.map((link) => (
-          <li key={link.id} className="border rounded p-3 flex justify-between items-center">
-            <div>
-              <p className="font-medium">{link.title}</p>
-              <a href={link.url} target="_blank" className="text-blue-600">
-                {link.url}
-              </a>
-            </div>
-            <Link
-              href={`/profile/links/${link.id}/edit`}
-              className="text-sm text-blue-500 hover:underline"
+      {links.length === 0 ? (
+        <p className="text-gray-600 mt-6">
+          Você ainda não adicionou nenhum link.
+        </p>
+      ) : (
+        <ul className="mt-4 space-y-3">
+          {links.map((link) => (
+            <li
+              key={link.id}
+              className="border rounded-lg p-4 flex justify-between items-center bg-white shadow-sm hover:shadow-md transition-shadow"
             >
-              Editar
-            </Link>
-          </li>
-        ))}
-      </ul>
+              <div>
+                <p className="font-medium text-gray-900">{link.title}</p>
+                <a
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 text-sm break-all hover:underline"
+                >
+                  {link.url}
+                </a>
+              </div>
+
+              <Link
+                href={`/profile/links/${link.id}/edit`}
+                className="text-sm text-blue-500 hover:underline"
+              >
+                Editar
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

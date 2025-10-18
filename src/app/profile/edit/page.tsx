@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { getToken, getUsernameFromToken } from "@/lib/auth";
-import Header from "@/components/Header";
 
 export default function EditProfilePage() {
   const router = useRouter();
