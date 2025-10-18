@@ -1,7 +1,9 @@
+// src/app/page.tsx
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link'; // Import Link for navigation
 import { apiFetch } from '@/lib/api';
 import { StatusHandler } from '@/components/StatusHandler';
 import { User, ApiError } from '@/types';
@@ -41,7 +43,16 @@ export default function UserSelectionPage() {
       <StatusHandler loading={loading} error={error} loadingMessage="Carregando usuários..." />
       {!loading && !error && (
         <section className="max-w-xl mx-auto p-6">
-          <h1 className="text-2xl font-semibold mb-4">Escolha um usuário para enviar feedback</h1>
+          <div className="flex justify-between items-center mb-4">
+            <h1 className="text-2xl font-semibold">Escolha um usuário para enviar feedback</h1>
+            <Link
+              href="/auth/login"
+              className="text-blue-600 hover:underline"
+              aria-label="Fazer login para acessar seu perfil"
+            >
+              Fazer Login
+            </Link>
+          </div>
           <ul className="space-y-2" role="list">
             {users?.map((user) => (
               <li
@@ -56,9 +67,9 @@ export default function UserSelectionPage() {
                 }}
                 role="button"
                 tabIndex={0}
-                aria-label={`Enviar feedback para ${user.name}`}
+                aria-label={`Enviar feedback para ${user.name ?? user.username}`}
               >
-                {user.name} ({user.username})
+                {user.name ?? user.username} ({user.username})
               </li>
             ))}
           </ul>
