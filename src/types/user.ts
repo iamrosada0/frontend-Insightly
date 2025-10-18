@@ -4,15 +4,17 @@ import { Link } from "./link";
 export interface User {
   id: number;
   username: string;
-  name: string;
+  name: string | null;
 }
 
 export interface UserProfile {
-  name: string;
-  bio: string;
+  name: string | null;
+  bio: string | null;
 }
 
-export interface UserProfileResponse extends UserProfile {
+export interface UserProfileResponse {
+  username: string;
+  name: string | null;
+  bio: string | null;
   links: Link[];
-  feedbacks: Feedback[];
 }

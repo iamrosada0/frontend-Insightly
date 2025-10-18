@@ -1,44 +1,62 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { Metadata } from 'next'
-import { LinkCard } from '@/components/LinkCard'
-import { FeedbackForm } from '@/components/FeedbackForm'
+// src/app/[username]/page.tsx
+import { apiFetch, ApiError } from '@/lib/api';
+import { StatusHandler } from '@/components/StatusHandler';
+import { UserProfileResponse } from '@/types';
+import FeedbackForm from '@/components/FeedbackForm';
 
-interface Props {
-  params: Promise<{ username: string }> 
+interface PublicProfilePageProps {
+  user: UserProfileResponse | null;
+  error?: string;
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { username } = await params 
-  return { title: `${username} • Insightly` }
+async function fetchUser(username: string): Promise<PublicProfilePageProps> {
+  try {
+    const user = await apiFetch<UserProfileResponse>(`/users/${username}`);
+    return { user };
+  } catch (err: unknown) {
+    const apiError = err as ApiError;
+    return { user: null, error: apiError.message || 'Erro ao carregar perfil público' };
+  }
 }
 
-export default async function Page({ params }: Props) {
-  const { username } = await params 
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/${username}`, {
-    cache: 'no-store',
-  })
+export default async function PublicProfilePage({ params }: { params: { username: string } }) {
+  const { user, error: initialError } = await fetchUser(params.username);
 
-  if (!res.ok) {
-    return <div className="py-20 text-center">Usuário não encontrado</div>
+  if (!user) {
+    return <StatusHandler loading={false} error={initialError || 'Usuário não encontrado'} />;
   }
 
-  const user = await res.json()
-
   return (
-    <div className="space-y-6 py-8">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold">{user.name ?? user.username}</h1>
-        <p className="text-gray-600">{user.bio}</p>
-      </div>
-
-      <div className="grid gap-4">
-        {user.links?.map((l: any) => <LinkCard key={l.id} link={l} />)}
-      </div>
-
-      <div className="mt-8">
-        <h2 className="text-xl font-semibold">Enviar Feedback Anônimo</h2>
-        <FeedbackForm username={username} />
-      </div>
-    </div>
-  )
+    <main className="max-w-3xl mx-auto p-6 space-y-6">
+      <section aria-labelledby="profile-header">
+        <h1 id="profile-header" className="text-3xl font-bold text-center">
+          {user.name ?? user.username}
+        </h1>
+        {user.bio && <p className="text-gray-600 text-center">{user.bio}</p>}
+      </section>
+      <section aria-labelledby="links-header">
+        <h2 id="links-header" className="text-xl font-semibold mb-2">Links</h2>
+        {user.links.length === 0 ? (
+          <p className="text-gray-500">Nenhum link disponível.</p>
+        ) : (
+          <ul className="space-y-2" role="list">
+            {user.links.map((link) => (
+              <li key={link.id}>
+                <a
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline"
+                  aria-label={`Visitar ${link.title}`}
+                >
+                  {link.title}
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      <FeedbackForm username={user.username} />
+    </main>
+  );
 }

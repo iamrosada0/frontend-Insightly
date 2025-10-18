@@ -22,7 +22,7 @@ export default function ProfilePage() {
       if (data) {
         setUser(data);
         setLinks(data.links ?? []);
-        setFeedbacks(data.feedbacks ?? []);
+        // setFeedbacks(data.feedbacks ?? []);
       } else {
         setError('Perfil não encontrado.');
       }

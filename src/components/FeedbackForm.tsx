@@ -1,46 +1,89 @@
 // src/components/FeedbackForm.tsx
-'use client'
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
+'use client';
 
-export function FeedbackForm({ username }: { username: string }) {
-  const [message, setMessage] = useState('')
-  const [ok, setOk] = useState<null | boolean>(null)
-  const [loading, setLoading] = useState(false)
+import { useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { apiFetch, ApiError } from '@/lib/api';
+import { StatusHandler } from '@/components/StatusHandler';
 
-  async function handle(e: React.FormEvent) {
-    e.preventDefault()
-    if (!message.trim()) return
-    setLoading(true)
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/feedback/${username}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message }),
-      })
-      if (!res.ok) throw new Error('Erro ao enviar')
-      setOk(true)
-      setMessage('')
-    } catch (err) {
-      setOk(false)
-    } finally { setLoading(false) }
-  }
+interface FeedbackFormProps {
+  username: string;
+}
+
+export default function FeedbackForm({ username }: FeedbackFormProps) {
+  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const router = useRouter();
+
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      setLoading(true);
+      setError(null);
+      setSuccess(false);
+
+      try {
+        await apiFetch<void>(`/feedback/${username}`, {
+          method: 'POST',
+          body: JSON.stringify({ message }),
+        });
+        setMessage('');
+        setSuccess(true);
+        setTimeout(() => setSuccess(false), 3000);
+      } catch (err: unknown) {
+        const apiError = err as ApiError;
+        setError(apiError.message || 'Erro ao enviar feedback');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [username, message],
+  );
 
   return (
-    <form onSubmit={handle} className="space-y-2">
-      {ok === true && <div className="text-green-600">Feedback enviado — obrigado!</div>}
-      {ok === false && <div className="text-red-600">Erro ao enviar feedback.</div>}
-      <textarea
-        className="w-full border rounded p-2"
-        rows={4}
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        placeholder="Escreva um feedback anônimo..."
-        required
-      />
-      <div className="flex justify-end">
-        <Button type="submit" disabled={loading}>{loading ? 'Enviando...' : 'Enviar'}</Button>
-      </div>
-    </form>
-  )
+    <>
+      <StatusHandler loading={loading} error={error} loadingMessage="Enviando feedback..." />
+      {success && (
+        <p className="text-green-600" role="status">
+          Feedback enviado com sucesso!
+        </p>
+      )}
+      <section aria-labelledby="feedback-header">
+        <h2 id="feedback-header" className="text-xl font-semibold mb-2">
+          Feedback Anônimo
+        </h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="feedback" className="block mb-1 font-semibold">
+              Deixe seu feedback
+            </label>
+            <textarea
+              id="feedback"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-600"
+              rows={4}
+              placeholder="Escreva seu feedback anônimo..."
+              required
+              aria-required="true"
+              aria-label="Feedback anônimo"
+              disabled={loading}
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className={`w-full px-4 py-2 rounded transition bg-blue-600 text-white ${
+              loading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-blue-700'
+            }`}
+            aria-label="Enviar feedback anônimo"
+          >
+            {loading ? 'Enviando...' : 'Enviar'}
+          </button>
+        </form>
+      </section>
+    </>
+  );
 }

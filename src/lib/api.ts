@@ -4,7 +4,7 @@ import { authHeaders } from './auth';
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
 // Define custom error interface
-interface ApiError extends Error {
+export interface ApiError extends Error {
   status: number;
   body: Record<string, unknown>;
 }

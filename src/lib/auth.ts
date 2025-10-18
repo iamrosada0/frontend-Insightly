@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { jwtDecode } from "jwt-decode";
 
-const TOKEN_KEY = 'insightly_token';
+export const TOKEN_KEY = 'insightly_token';
 
 export function saveToken(token: string) {
   if (typeof window !== 'undefined') {
