@@ -4,16 +4,16 @@ import { LinkCard } from '@/components/LinkCard'
 import { FeedbackForm } from '@/components/FeedbackForm'
 
 interface Props {
-  params: Promise<{ username: string }> // 👈 importante: agora params é uma Promise
+  params: Promise<{ username: string }> 
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { username } = await params // 👈 precisa do await
+  const { username } = await params 
   return { title: `${username} • Insightly` }
 }
 
 export default async function Page({ params }: Props) {
-  const { username } = await params // 👈 await aqui também
+  const { username } = await params 
   const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/${username}`, {
     cache: 'no-store',
   })
