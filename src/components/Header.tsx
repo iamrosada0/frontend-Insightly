@@ -33,9 +33,7 @@ export default function Header() {
         <button onClick={() => router.push("/feedbacks")} className="hover:underline">
           Feedbacks
         </button>
-        <button onClick={() => router.push("/feedbacks/new")} className="hover:underline">
-          Criar Feedback
-        </button>
+  
         <button onClick={handleLogout} className="bg-red-600 px-3 py-1 rounded hover:bg-red-700">
           Logout
         </button>

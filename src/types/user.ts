@@ -1,4 +1,3 @@
-import { Feedback } from "./feedback";
 import { Link } from "./link";
 
 export interface User {

@@ -1,4 +1,3 @@
-// src/app/login/page.tsx
 'use client';
 
 import { useState, useCallback } from 'react';
@@ -25,7 +24,7 @@ import { saveToken } from '@/lib/auth';
 
 export default function LoginForm({ className, ...props }: React.ComponentProps<'div'>) {
   const [email, setEmail] = useState('');
-  const [senha, setSenha] = useState('');
+  const [password, setPassword] = useState('');
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const router = useRouter();
@@ -35,12 +34,13 @@ export default function LoginForm({ className, ...props }: React.ComponentProps<
       e.preventDefault();
       setCarregando(true);
       setErro(null);
+      console.log('Tentando fazer login com:', { email, password });
       try {
         const response = await apiFetch<{ accessToken: string; user: { id: number; email: string; username: string } }>(
           '/auth/login',
           {
             method: 'POST',
-            body: JSON.stringify({ email, senha }),
+            body: JSON.stringify({ email, password }),
           },
         );
         saveToken(response!.accessToken); 
@@ -52,7 +52,7 @@ export default function LoginForm({ className, ...props }: React.ComponentProps<
         setCarregando(false);
       }
     },
-    [email, senha],
+    [email, password],
   );
 
   return (
@@ -61,7 +61,7 @@ export default function LoginForm({ className, ...props }: React.ComponentProps<
         <CardHeader>
           <CardTitle>Entrar na sua conta Insightly</CardTitle>
           <CardDescription>
-            Insira seu email e senha para acessar sua conta
+            Insira seu email e password para acessar sua conta
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -81,20 +81,20 @@ export default function LoginForm({ className, ...props }: React.ComponentProps<
               </Field>
               <Field>
                 <div className="flex items-center">
-                  <FieldLabel htmlFor="password">Senha</FieldLabel>
+                  <FieldLabel htmlFor="password">password</FieldLabel>
                   <a
                     href="#"
                     className="ml-auto text-sm underline-offset-4 hover:underline"
-                    aria-label="Esqueceu a senha?"
+                    aria-label="Esqueceu a password?"
                   >
-                    Esqueceu a senha?
+                    Esqueceu a password?
                   </a>
                 </div>
                 <Input
                   id="password"
                   type="password"
-                  value={senha}
-                  onChange={(e) => setSenha(e.target.value)}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   required
                 />
               </Field>
