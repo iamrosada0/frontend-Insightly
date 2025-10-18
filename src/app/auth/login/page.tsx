@@ -1,11 +1,11 @@
-import  LoginForm  from "@/components/login-form"
+'use client';
+
+import LoginForm from "@/components/Loginform";
 
 export default function Page() {
   return (
-    <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
-      <div className="w-full max-w-sm">
+    <main className="max-w-md mx-auto p-6">
         <LoginForm />
-      </div>
-    </div>
+      </main>
   )
 }
