@@ -33,33 +33,30 @@ export default function LoginForm({
   const [erro, setErro] = useState<string | null>(null);
   const router = useRouter();
 
-  const handleSubmit = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
-      setCarregando(true);
-      setErro(null);
-      console.log("Tentando fazer login com:", { email, password });
-      try {
-        const response = await apiFetch<{
-          accessToken: string;
-          user: { id: number; email: string; username: string };
-        }>("/auth/login", {
-          method: "POST",
-          body: JSON.stringify({ email, password }),
-        });
-        saveToken(response!.accessToken);
-        router.push(
-          `/perfil?token=${encodeURIComponent(response!.accessToken)}`
-        );
-      } catch (err: unknown) {
-        const apiError = err as ApiError;
-        setErro(apiError.message || "Erro ao fazer login");
-      } finally {
-        setCarregando(false);
-      }
-    },
-    [email, password]
-  );
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
+  e.preventDefault();
+  setCarregando(true);
+  setErro(null);
+
+  try {
+    const response = await apiFetch<{
+      accessToken: string;
+      user: { id: number; email: string; username: string };
+    }>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
+
+    saveToken(response!.accessToken); // salva token
+    router.push("/profile"); // redireciona sem token na URL
+  } catch (err: unknown) {
+    const apiError = err as ApiError;
+    setErro(apiError.message || "Erro ao fazer login");
+  } finally {
+    setCarregando(false);
+  }
+}, [email, password]);
+
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>

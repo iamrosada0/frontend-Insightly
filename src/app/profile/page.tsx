@@ -1,18 +1,26 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { apiFetch, ApiError } from '@/lib/api';
-import { StatusHandler } from '@/components/StatusHandler';
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Feedback, UserProfileResponse } from '@/types';
-import { clearToken } from '@/lib/auth';
-import { Spinner } from '@/components/ui/spinner';
+import { useState, useEffect, useCallback } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { apiFetch, ApiError } from "@/lib/api";
+import { StatusHandler } from "@/components/StatusHandler";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Feedback, UserProfileResponse } from "@/types";
+import { clearToken, getToken } from "@/lib/auth";
+import { Spinner } from "@/components/ui/spinner";
 
-export default function ProfilePage({ className, ...props }: React.ComponentProps<'div'>) {
-  const searchParams = useSearchParams();
+export default function ProfilePage({
+  className,
+  ...props
+}: React.ComponentProps<"div">) {
   const router = useRouter();
 
   const [profile, setProfile] = useState<UserProfileResponse | null>(null);
@@ -22,43 +30,50 @@ export default function ProfilePage({ className, ...props }: React.ComponentProp
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
-  const fetchProfileAndFeedbacks = useCallback(async (token: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const profileData = await apiFetch<UserProfileResponse>('/users/me/profile', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setProfile(profileData ?? null);
+  const fetchProfileAndFeedbacks = useCallback(
+    async (token: string) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const profileData = await apiFetch<UserProfileResponse>(
+          "/users/me/profile",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        setProfile(profileData ?? null);
 
-      const feedbackData = await apiFetch<Feedback[]>(`/feedback?page=${page}&limit=10`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setFeedbacks(feedbackData ?? []);
-      setHasMore((feedbackData?.length ?? 0) === 10);
-    } catch (err: unknown) {
-      const apiError = err as ApiError;
-      if (apiError.status === 401) {
-        clearToken();
-        router.push('/auth/login');
-      } else {
-        setError(apiError.message || 'Erro ao carregar perfil ou feedbacks');
+        const feedbackData = await apiFetch<Feedback[]>(
+          `/feedback?page=${page}&limit=10`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        setFeedbacks(feedbackData ?? []);
+        setHasMore((feedbackData?.length ?? 0) === 10);
+      } catch (err: unknown) {
+        const apiError = err as ApiError;
+        if (apiError.status === 401) {
+          clearToken();
+          router.push("/auth/login");
+        } else {
+          setError(apiError.message || "Erro ao carregar perfil ou feedbacks");
+        }
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  }, [page, router]);
+    },
+    [page, router]
+  );
 
   useEffect(() => {
-    // Pega token da URL
-    const token = searchParams.get('token');
+    const token = getToken(); // pega token do storage
     if (!token) {
-      router.push('/auth/login');
+      router.push("/auth/login");
       return;
     }
-
     fetchProfileAndFeedbacks(token);
-  }, [fetchProfileAndFeedbacks, searchParams, router]);
+  }, [fetchProfileAndFeedbacks, router]);
 
   const handleNextPage = () => {
     if (hasMore) setPage((prev) => prev + 1);
@@ -77,26 +92,38 @@ export default function ProfilePage({ className, ...props }: React.ComponentProp
   }
 
   return (
-    <div className={cn('flex flex-col gap-6 max-w-3xl mx-auto p-6', className)} {...props}>
+    <div
+      className={cn("flex flex-col gap-6 max-w-3xl mx-auto p-6", className)}
+      {...props}
+    >
       <Card>
         <CardHeader>
           <CardTitle>Seu Perfil</CardTitle>
-          <CardDescription>Veja os detalhes do seu perfil e os feedbacks recebidos.</CardDescription>
+          <CardDescription>
+            Veja os detalhes do seu perfil e os feedbacks recebidos.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <StatusHandler loading={loading} error={error} loadingMessage="Carregando perfil e feedbacks..." />
+          <StatusHandler
+            loading={loading}
+            error={error}
+            loadingMessage="Carregando perfil e feedbacks..."
+          />
           {!loading && !error && profile && (
             <div className="space-y-6">
               <div>
                 <h2 className="text-lg font-semibold">Informações do Perfil</h2>
                 <p className="text-gray-800">
-                  <span className="font-medium">Usuário:</span> {profile.username}
+                  <span className="font-medium">Usuário:</span>{" "}
+                  {profile.username}
                 </p>
                 <p className="text-gray-800">
-                  <span className="font-medium">Nome:</span> {profile.name || 'Não definido'}
+                  <span className="font-medium">Nome:</span>{" "}
+                  {profile.name || "Não definido"}
                 </p>
                 <p className="text-gray-800">
-                  <span className="font-medium">Bio:</span> {profile.bio || 'Não definida'}
+                  <span className="font-medium">Bio:</span>{" "}
+                  {profile.bio || "Não definida"}
                 </p>
                 <div>
                   <span className="font-medium">Links:</span>
@@ -124,7 +151,9 @@ export default function ProfilePage({ className, ...props }: React.ComponentProp
               <div>
                 <h2 className="text-lg font-semibold">Meus Feedbacks</h2>
                 {feedbacks?.length === 0 ? (
-                  <p className="text-gray-500 text-center">Nenhum feedback recebido ainda.</p>
+                  <p className="text-gray-500 text-center">
+                    Nenhum feedback recebido ainda.
+                  </p>
                 ) : (
                   <ul className="space-y-4" role="list">
                     {feedbacks?.map((feedback) => (
@@ -135,7 +164,8 @@ export default function ProfilePage({ className, ...props }: React.ComponentProp
                       >
                         <p className="text-gray-800">{feedback.text}</p>
                         <p className="text-sm text-gray-500 mt-2">
-                          Recebido: {new Date(feedback.createdAt).toLocaleString()}
+                          Recebido:{" "}
+                          {new Date(feedback.createdAt).toLocaleString()}
                         </p>
                       </li>
                     ))}

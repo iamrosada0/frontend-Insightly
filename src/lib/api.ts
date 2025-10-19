@@ -1,7 +1,7 @@
 import { authHeaders } from './auth';
 
 // Define the base API URL
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://insightly-alb-570198500.eu-west-2.elb.amazonaws.com/api';
 
 // Define custom error interface
 export interface ApiError extends Error {
