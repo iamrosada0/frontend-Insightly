@@ -1,8 +1,16 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { z } from 'zod';
 import { apiFetch, ApiError } from '@/lib/api';
 import { StatusHandler } from '@/components/StatusHandler';
+
+const feedbackSchema = z.object({
+  message: z
+    .string()
+    .min(5, 'O feedback deve ter pelo menos 5 caracteres.')
+    .max(500, 'O feedback deve ter no máximo 500 caracteres.'),
+});
 
 interface FeedbackFormProps {
   username: string;
@@ -12,6 +20,7 @@ export default function FeedbackForm({ username }: FeedbackFormProps) {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
   const handleSubmit = useCallback(
@@ -19,7 +28,16 @@ export default function FeedbackForm({ username }: FeedbackFormProps) {
       e.preventDefault();
       setLoading(true);
       setError(null);
+      setValidationError(null);
       setSuccess(false);
+
+      const result = feedbackSchema.safeParse({ message });
+      if (!result.success) {
+        const firstIssue = result.error.issues[0]; 
+        setValidationError(firstIssue.message);
+        setLoading(false);
+        return;
+      }
 
       try {
         await apiFetch<void>(`/feedback/${username}`, {
@@ -36,12 +54,16 @@ export default function FeedbackForm({ username }: FeedbackFormProps) {
         setLoading(false);
       }
     },
-    [username, message],
+    [username, message]
   );
 
   return (
     <>
-      <StatusHandler loading={loading} error={error} loadingMessage="Enviando feedback..." />
+      <StatusHandler
+        loading={loading}
+        error={error}
+        loadingMessage="Enviando feedback..."
+      />
       {success && (
         <p className="text-green-600" role="status">
           Feedback enviado com sucesso!
@@ -60,7 +82,9 @@ export default function FeedbackForm({ username }: FeedbackFormProps) {
               id="feedback"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-600"
+              className={`w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-600 ${
+                validationError ? 'border-red-500' : ''
+              }`}
               rows={4}
               placeholder="Escreva seu feedback anônimo..."
               required
@@ -68,6 +92,9 @@ export default function FeedbackForm({ username }: FeedbackFormProps) {
               aria-label="Feedback anônimo"
               disabled={loading}
             />
+            {validationError && (
+              <p className="text-red-600 text-sm mt-1">{validationError}</p>
+            )}
           </div>
           <button
             type="submit"

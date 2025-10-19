@@ -15,6 +15,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { StatusHandler } from '@/components/StatusHandler';
 import { z } from 'zod';
+import Link from 'next/link';
 
 export const signupSchema = z.object({
   name: z.string().min(2, 'O nome deve ter pelo menos 2 caracteres'),
@@ -134,9 +135,9 @@ export function SignupForm({
               </Button>
               <FieldDescription className="text-center mt-2">
                 Já tem uma conta?{' '}
-                <a href="/auth/login" className="text-blue-600 hover:underline">
+                <Link href="/auth/login" className="text-blue-600 hover:underline">
                   Entrar
-                </a>
+                </Link>
               </FieldDescription>
             </Field>
           </FieldGroup>
