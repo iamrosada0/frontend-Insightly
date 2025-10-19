@@ -1,30 +1,34 @@
-'use client';
+"use client";
 
-import { useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { apiFetch, ApiError } from '@/lib/api';
-import { StatusHandler } from '@/components/StatusHandler';
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
+import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { apiFetch, ApiError } from "@/lib/api";
+import { StatusHandler } from "@/components/StatusHandler";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
+} from "@/components/ui/card";
 import {
   Field,
   FieldDescription,
   FieldGroup,
   FieldLabel,
-} from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
-import { saveToken } from '@/lib/auth';
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { saveToken } from "@/lib/auth";
+import Link from "next/link";
 
-export default function LoginForm({ className, ...props }: React.ComponentProps<'div'>) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+export default function LoginForm({
+  className,
+  ...props
+}: React.ComponentProps<"div">) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const router = useRouter();
@@ -34,29 +38,31 @@ export default function LoginForm({ className, ...props }: React.ComponentProps<
       e.preventDefault();
       setCarregando(true);
       setErro(null);
-      console.log('Tentando fazer login com:', { email, password });
+      console.log("Tentando fazer login com:", { email, password });
       try {
-        const response = await apiFetch<{ accessToken: string; user: { id: number; email: string; username: string } }>(
-          '/auth/login',
-          {
-            method: 'POST',
-            body: JSON.stringify({ email, password }),
-          },
+        const response = await apiFetch<{
+          accessToken: string;
+          user: { id: number; email: string; username: string };
+        }>("/auth/login", {
+          method: "POST",
+          body: JSON.stringify({ email, password }),
+        });
+        saveToken(response!.accessToken);
+        router.push(
+          `/perfil?token=${encodeURIComponent(response!.accessToken)}`
         );
-        saveToken(response!.accessToken); 
-        router.push(`/perfil?token=${encodeURIComponent(response!.accessToken)}`);
       } catch (err: unknown) {
         const apiError = err as ApiError;
-        setErro(apiError.message || 'Erro ao fazer login');
+        setErro(apiError.message || "Erro ao fazer login");
       } finally {
         setCarregando(false);
       }
     },
-    [email, password],
+    [email, password]
   );
 
   return (
-    <div className={cn('flex flex-col gap-6', className)} {...props}>
+    <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
         <CardHeader>
           <CardTitle>Entrar na sua conta Insightly</CardTitle>
@@ -67,7 +73,11 @@ export default function LoginForm({ className, ...props }: React.ComponentProps<
         <CardContent>
           <form onSubmit={handleSubmit}>
             <FieldGroup>
-              <StatusHandler loading={carregando} error={erro} loadingMessage="Fazendo login..." />
+              <StatusHandler
+                loading={carregando}
+                error={erro}
+                loadingMessage="Fazendo login..."
+              />
               <Field>
                 <FieldLabel htmlFor="email">Email</FieldLabel>
                 <Input
@@ -82,13 +92,13 @@ export default function LoginForm({ className, ...props }: React.ComponentProps<
               <Field>
                 <div className="flex items-center">
                   <FieldLabel htmlFor="password">password</FieldLabel>
-                  <a
+                  <Link
                     href="#"
                     className="ml-auto text-sm underline-offset-4 hover:underline"
                     aria-label="Esqueceu a password?"
                   >
                     Esqueceu a password?
-                  </a>
+                  </Link>
                 </div>
                 <Input
                   id="password"
@@ -100,13 +110,16 @@ export default function LoginForm({ className, ...props }: React.ComponentProps<
               </Field>
               <Field>
                 <Button type="submit" className="w-full" disabled={carregando}>
-                  {carregando ? 'Entrando...' : 'Entrar'}
+                  {carregando ? "Entrando..." : "Entrar"}
                 </Button>
                 <FieldDescription className="text-center mt-2">
-                  Não tem uma conta?{' '}
-                  <a href="/auth/register" className="text-blue-600 hover:underline">
+                  Não tem uma conta?{" "}
+                  <Link
+                    href="/auth/register"
+                    className="text-blue-600 hover:underline"
+                  >
                     Cadastre-se
-                  </a>
+                  </Link>
                 </FieldDescription>
               </Field>
             </FieldGroup>

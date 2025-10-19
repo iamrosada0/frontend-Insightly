@@ -1,15 +1,21 @@
-// src/app/[username]/page.tsx
 import { apiFetch, ApiError } from '@/lib/api';
 import { StatusHandler } from '@/components/StatusHandler';
 import { UserProfileResponse } from '@/types';
 import FeedbackForm from '@/components/FeedbackForm';
 
+type Params = Promise<{ username: string }>;
+
 interface PublicProfilePageProps {
+  params: Params; 
+  searchParams?: { [key: string]: string | string[] | undefined };
+}
+
+interface PublicProfileData {
   user: UserProfileResponse | null;
   error?: string;
 }
 
-async function fetchUser(username: string): Promise<PublicProfilePageProps> {
+async function fetchUser(username: string): Promise<PublicProfileData> {
   try {
     const user = await apiFetch<UserProfileResponse>(`/users/${username}`);
     return { user };
@@ -19,11 +25,12 @@ async function fetchUser(username: string): Promise<PublicProfilePageProps> {
   }
 }
 
-export default async function PublicProfilePage({ params }: { params: { username: string } }) {
-  const { user, error: initialError } = await fetchUser(params.username);
+export default async function PublicProfilePage({ params }: PublicProfilePageProps) {
+  const { username } = await params; 
+  const { user, error } = await fetchUser(username);
 
   if (!user) {
-    return <StatusHandler loading={false} error={initialError || 'Usuário não encontrado'} />;
+    return <StatusHandler loading={false} error={error || 'Usuário não encontrado'} />;
   }
 
   return (
@@ -34,6 +41,7 @@ export default async function PublicProfilePage({ params }: { params: { username
         </h1>
         {user.bio && <p className="text-gray-600 text-center">{user.bio}</p>}
       </section>
+
       <section aria-labelledby="links-header">
         <h2 id="links-header" className="text-xl font-semibold mb-2">Links</h2>
         {user.links.length === 0 ? (
@@ -56,6 +64,7 @@ export default async function PublicProfilePage({ params }: { params: { username
           </ul>
         )}
       </section>
+
       <FeedbackForm username={user.username} />
     </main>
   );

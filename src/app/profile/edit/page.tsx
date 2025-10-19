@@ -8,7 +8,7 @@ import { EditProfileForm, EditProfileFormData, editProfileSchema } from '@/compo
 
 type FormErrors = Partial<Record<keyof EditProfileFormData | 'form', string>>;
 
-export default function EditProfilePage({ searchParams, ...props }: React.ComponentProps<'div'> & { searchParams?: unknown }) {
+export default function EditProfilePage() {
   const [formData, setFormData] = useState<EditProfileFormData>({ name: '', bio: '' });
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(true);
@@ -111,7 +111,7 @@ export default function EditProfilePage({ searchParams, ...props }: React.Compon
   }, [router]);
 
   return (
-    <main className="max-w-xl mx-auto p-6" {...props}>
+    <main className="max-w-xl mx-auto p-6">
       <EditProfileForm
         formData={formData}
         errors={errors}
