@@ -67,7 +67,7 @@ export default function ProfilePage({
   );
 
   useEffect(() => {
-    const token = getToken(); // pega token do storage
+    const token = getToken(); 
     if (!token) {
       router.push("/auth/login");
       return;

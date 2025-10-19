@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { apiFetch, ApiError } from '@/lib/api';
 import { getToken, getUsernameFromToken, clearToken } from '@/lib/auth';
 import { EditProfileForm, EditProfileFormData, editProfileSchema } from '@/components/EditProfileForm';
+import { Spinner } from '@/components/ui/spinner';
 
 type FormErrors = Partial<Record<keyof EditProfileFormData | 'form', string>>;
 
@@ -109,7 +110,14 @@ export default function EditProfilePage() {
   const handleCancel = useCallback(() => {
     router.push('/profile');
   }, [router]);
-
+  
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Spinner />
+      </div>
+    );
+  }
   return (
     <main className="max-w-xl mx-auto p-6">
       <EditProfileForm

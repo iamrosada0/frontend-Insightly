@@ -6,6 +6,7 @@ import { apiFetch, ApiError } from '@/lib/api';
 import { getToken, clearToken } from '@/lib/auth';
 import { EditLinkForm, EditLinkFormData, editLinkSchema } from '@/components/EditLinkForm';
 import { Link } from '@/types';
+import { Spinner } from '@/components/ui/spinner';
 
 type FormErrors = Partial<Record<keyof EditLinkFormData | 'form', string>>;
 
@@ -114,7 +115,14 @@ export default function EditLinkPage({ searchParams, ...props }: React.Component
   const handleCancel = useCallback(() => {
     router.push('/profile/links');
   }, [router]);
-
+  
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Spinner />
+      </div>
+    );
+  }
   return (
     <main className="max-w-md mx-auto p-6" {...props}>
       <EditLinkForm

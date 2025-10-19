@@ -1,6 +1,5 @@
 import { Feedback } from '@/types';
 import { StatusHandler } from './StatusHandler';
-import Header from './Header';
 
 interface FeedbackListProps {
   feedbacks: Feedback[] | null;
@@ -21,6 +20,7 @@ export function FeedbackList({
   onNextPage,
   onPrevPage,
 }: FeedbackListProps) {
+
   return (
     <main className="max-w-3xl mx-auto p-6 space-y-6">
       <StatusHandler loading={loading} error={error} loadingMessage="Carregando feedbacks..." />

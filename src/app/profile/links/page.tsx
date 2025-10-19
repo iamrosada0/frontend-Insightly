@@ -7,6 +7,7 @@ import { apiFetch, ApiError } from '@/lib/api';
 import { getToken, clearToken } from '@/lib/auth';
 import { StatusHandler } from '@/components/StatusHandler';
 import { Link as LinkType } from '@/types';
+import { Spinner } from '@/components/ui/spinner';
 
 export default function LinksPage() {
   const router = useRouter();
@@ -76,7 +77,13 @@ export default function LinksPage() {
     fetchLinks();
   }, [fetchLinks,router]);
   
-
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Spinner />
+      </div>
+    );
+  }
   return (
     <main className="max-w-2xl mx-auto p-6">
       <StatusHandler loading={loading} error={error} loadingMessage="Carregando links..." />

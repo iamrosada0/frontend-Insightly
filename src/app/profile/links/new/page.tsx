@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { apiFetch, ApiError } from '@/lib/api';
 import { CreateLinkForm, CreateLinkFormData, createLinkSchema } from '@/components/CreateLinkForm';
 import { useAuth } from '@/lib/auth-context';
+import { Spinner } from '@/components/ui/spinner';
 
 type FormErrors = Partial<Record<keyof CreateLinkFormData | 'form', string>>;
 
@@ -15,10 +16,14 @@ export default function CreateLinkPage({ ...props }: React.ComponentProps<'div'>
   const [formData, setFormData] = useState<CreateLinkFormData>({ title: '', url: '' });
   const [errors, setErrors] = useState<FormErrors>({});
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true); // ✅ estado de loading
 
+  // Checa token e redireciona se necessário
   useEffect(() => {
     if (!token) {
       router.push('/auth/login');
+    } else {
+      setLoading(false); // ✅ carregamento concluído
     }
   }, [token, router]);
 
@@ -64,17 +69,25 @@ export default function CreateLinkPage({ ...props }: React.ComponentProps<'div'>
     router.push('/profile/links');
   }, [router]);
 
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Spinner />
+      </div>
+    );
+  }
+
   return (
     <main className="max-w-md mx-auto p-6" {...props}>
       <CreateLinkForm
         formData={formData}
         errors={errors}
         saving={saving}
+        loading={false} // o loading do form é separado de loading geral
         onChange={setFormData}
         onSubmit={handleSubmit}
-        onCancel={handleCancel} 
-        loading={false}      
-        />
+        onCancel={handleCancel}
+      />
     </main>
   );
 }
