@@ -1,28 +1,38 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { apiFetch } from '@/lib/api';
-import { Feedback, ApiError } from '@/types';
-import { FeedbackList } from '@/components/FeedbackList';
-import { getToken, clearToken } from '@/lib/auth';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Spinner } from '@/components/ui/spinner';
+import { apiFetch, ApiError } from '@/lib/api';
+import { getToken, clearToken } from '@/lib/auth';
+import { Feedback } from '@/types';
 
-export default function FeedbackListPage() {
+interface UseFeedbackListResult {
+  feedbacks: Feedback[] | null;
+  loading: boolean;
+  error: string | null;
+  page: number;
+  hasMore: boolean;
+  nextPage: () => void;
+  prevPage: () => void;
+}
+
+export function useFeedbackList(): UseFeedbackListResult {
   const router = useRouter();
 
   const [feedbacks, setFeedbacks] = useState<Feedback[] | null>(null);
-  const [loading, setLoading] = useState(true); 
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
+  const redirectToLogin = useCallback(() => {
+    clearToken();
+    router.push('/auth/login');
+  }, [router]);
+
   const fetchFeedbacks = useCallback(async () => {
     const token = getToken();
-    if (!token) {
-      router.push('/auth/login');
-      return;
-    }
+    if (!token) return redirectToLogin();
 
     setLoading(true);
     setError(null);
@@ -31,56 +41,47 @@ export default function FeedbackListPage() {
       const data = await apiFetch<Feedback[]>(`/feedback?page=${page}&limit=10`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
       setFeedbacks(data ?? []);
       setHasMore((data?.length ?? 0) === 10);
     } catch (err: unknown) {
       const apiError = err as ApiError;
       console.error('Erro ao carregar feedbacks:', apiError);
+
       if (apiError.status === 401) {
-        clearToken();
-        router.push('/auth/login');
+        redirectToLogin();
       } else {
         setError(apiError.message || 'Erro ao carregar feedbacks');
       }
     } finally {
       setLoading(false);
     }
-  }, [page, router]);
+  }, [page, redirectToLogin]);
 
   useEffect(() => {
     const token = getToken();
     if (!token) {
-      router.push('/auth/login');
-    } else {
-      fetchFeedbacks();
+      redirectToLogin();
+      return;
     }
-  }, [page, router, fetchFeedbacks]);
+    fetchFeedbacks();
+  }, [fetchFeedbacks, redirectToLogin]);
 
-  const handleNextPage = () => {
+  const nextPage = useCallback(() => {
     if (hasMore) setPage((prev) => prev + 1);
-  };
+  }, [hasMore]);
 
-  const handlePrevPage = () => {
+  const prevPage = useCallback(() => {
     if (page > 1) setPage((prev) => prev - 1);
+  }, [page]);
+
+  return {
+    feedbacks,
+    loading,
+    error,
+    page,
+    hasMore,
+    nextPage,
+    prevPage,
   };
-
-  if (loading && page === 1) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <Spinner />
-      </div>
-    );
-  }
-
-  return (
-    <FeedbackList
-      feedbacks={feedbacks}
-      loading={loading && page > 1} 
-      error={error}
-      page={page}
-      hasMore={hasMore}
-      onNextPage={handleNextPage}
-      onPrevPage={handlePrevPage}
-    />
-  );
 }
