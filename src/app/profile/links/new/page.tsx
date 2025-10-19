@@ -1,19 +1,26 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiFetch, ApiError } from '@/lib/api';
-import { getToken, clearToken } from '@/lib/auth';
 import { CreateLinkForm, CreateLinkFormData, createLinkSchema } from '@/components/CreateLinkForm';
+import { useAuth } from '@/lib/auth-context';
 
 type FormErrors = Partial<Record<keyof CreateLinkFormData | 'form', string>>;
 
-export default function CreateLinkPage({ searchParams, ...props }: React.ComponentProps<'div'> & { searchParams?: unknown }) {
+export default function CreateLinkPage({ ...props }: React.ComponentProps<'div'>) {
+  const { token } = useAuth();
+  const router = useRouter();
+
   const [formData, setFormData] = useState<CreateLinkFormData>({ title: '', url: '' });
   const [errors, setErrors] = useState<FormErrors>({});
-  const [loading, setLoading] = useState(false); 
   const [saving, setSaving] = useState(false);
-  const router = useRouter();
+
+  useEffect(() => {
+    if (!token) {
+      router.push('/auth/login');
+    }
+  }, [token, router]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -21,7 +28,6 @@ export default function CreateLinkPage({ searchParams, ...props }: React.Compone
       setErrors({});
       setSaving(true);
 
-      // Validate with Zod
       const result = createLinkSchema.safeParse(formData);
       if (!result.success) {
         const fieldErrors = result.error.flatten().fieldErrors;
@@ -34,18 +40,10 @@ export default function CreateLinkPage({ searchParams, ...props }: React.Compone
       }
 
       try {
-        const token = getToken();
-        if (!token) {
-          setErrors({ form: 'Usuário não autenticado' });
-          router.push('/auth/login');
-          return;
-        }
-
+        if (!token) return; 
         await apiFetch<void>('/users/links', {
           method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ title:formData.title, url:formData.url }),
-
+          body: JSON.stringify(formData),
         });
         router.push('/profile/links');
       } catch (err: unknown) {
@@ -53,14 +51,13 @@ export default function CreateLinkPage({ searchParams, ...props }: React.Compone
         console.error('Erro ao criar link:', apiError);
         setErrors({ form: apiError.message || 'Erro ao salvar link' });
         if (apiError.status === 401) {
-          clearToken();
           router.push('/auth/login');
         }
       } finally {
         setSaving(false);
       }
     },
-    [formData, router],
+    [formData, router, token],
   );
 
   const handleCancel = useCallback(() => {
@@ -72,12 +69,12 @@ export default function CreateLinkPage({ searchParams, ...props }: React.Compone
       <CreateLinkForm
         formData={formData}
         errors={errors}
-        loading={loading}
         saving={saving}
         onChange={setFormData}
         onSubmit={handleSubmit}
-        onCancel={handleCancel}
-      />
+        onCancel={handleCancel} 
+        loading={false}      
+        />
     </main>
   );
 }

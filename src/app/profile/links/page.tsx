@@ -1,54 +1,88 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, ApiError } from '@/lib/api';
+import { getToken, clearToken } from '@/lib/auth';
 import { StatusHandler } from '@/components/StatusHandler';
-import { Link as LinkType, ApiError } from '@/types';
+import { Link as LinkType } from '@/types';
 
 export default function LinksPage() {
-  const [links, setLinks] = useState<LinkType[] | null>(null);
+  const router = useRouter();
+
+  const [links, setLinks] = useState<LinkType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchLinks = useCallback(async () => {
+    const token = getToken();
+    if (!token) {
+      router.push('/auth/login');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
     try {
-      const data = await apiFetch<LinkType[]>('/users/links');
+      const data = await apiFetch<LinkType[]>('/users/links', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setLinks(data ?? []);
     } catch (err: unknown) {
       const apiError = err as ApiError;
       console.error('Erro ao buscar links:', apiError);
       setError(apiError.message || 'Erro desconhecido ao carregar os links.');
+      if ((err as ApiError).status === 401) {
+        clearToken();
+        router.push('/auth/login');
+      }
     } finally {
       setLoading(false);
     }
-  }, []);
-
-  useEffect(() => {
-    fetchLinks();
-  }, [fetchLinks]);
+  }, [router]);
 
   const handleDelete = useCallback(
     async (id: number) => {
+      const token = getToken();
+      if (!token) {
+        router.push('/auth/login');
+        return;
+      }
+
       if (!confirm('Tem certeza que deseja excluir este link?')) return;
 
       try {
-        await apiFetch<void>(`/users/links/${id}`, { method: 'DELETE' });
-        setLinks((prev) => (prev ?? []).filter((link) => link.id !== id));
+        await apiFetch<void>(`/users/links/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setLinks((prev) => prev.filter((link) => link.id !== id));
       } catch (err: unknown) {
         const apiError = err as ApiError;
         console.error('Erro ao excluir link:', apiError);
         setError(apiError.message || 'Erro desconhecido ao excluir o link.');
+        if (apiError.status === 401) {
+          clearToken();
+          router.push('/auth/login');
+        }
       }
     },
-    [],
+    [router],
   );
 
+  useEffect(() => {
+    fetchLinks();
+  }, [fetchLinks,router]);
+  
+
   return (
-    <>
+    <main className="max-w-2xl mx-auto p-6">
       <StatusHandler loading={loading} error={error} loadingMessage="Carregando links..." />
+
       {!loading && !error && (
-        <div className="max-w-2xl mx-auto p-6">
+        <>
           <div className="flex justify-between items-center mb-4">
             <h1 className="text-2xl font-semibold">Meus Links</h1>
             <Link
@@ -59,11 +93,12 @@ export default function LinksPage() {
               + Novo Link
             </Link>
           </div>
-          {links?.length === 0 ? (
+
+          {links.length === 0 ? (
             <p className="text-gray-600 mt-6">Você ainda não adicionou nenhum link.</p>
           ) : (
             <ul className="mt-4 space-y-3" role="list">
-              {links?.map((link) => (
+              {links.map((link) => (
                 <li
                   key={link.id}
                   className="border rounded-lg p-4 flex justify-between items-center bg-white shadow-sm hover:shadow-md transition-shadow"
@@ -100,8 +135,8 @@ export default function LinksPage() {
               ))}
             </ul>
           )}
-        </div>
+        </>
       )}
-    </>
+    </main>
   );
 }
