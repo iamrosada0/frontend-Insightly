@@ -1,9 +1,8 @@
-// src/app/page.tsx
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link'; // Import Link for navigation
+import Link from 'next/link'; 
 import { apiFetch } from '@/lib/api';
 import { StatusHandler } from '@/components/StatusHandler';
 import { User, ApiError } from '@/types';

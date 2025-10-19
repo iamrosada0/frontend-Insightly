@@ -4,12 +4,11 @@ import { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '@/lib/api';
 import { Feedback, ApiError } from '@/types';
 import { FeedbackList } from '@/components/FeedbackList';
-import { useAuth } from '@/lib/auth-context';
+import { getToken, clearToken } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { Spinner } from '@/components/ui/spinner';
 
 export default function FeedbackListPage() {
-  const { token } = useAuth();
   const router = useRouter();
 
   const [feedbacks, setFeedbacks] = useState<Feedback[] | null>(null);
@@ -19,17 +18,26 @@ export default function FeedbackListPage() {
   const [hasMore, setHasMore] = useState(true);
 
   const fetchFeedbacks = useCallback(async () => {
-    if (!token) return;
+    const token = getToken();
+    if (!token) {
+      router.push('/auth/login');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      const data = await apiFetch<Feedback[]>(`/feedback?page=${page}&limit=10`);
+      const data = await apiFetch<Feedback[]>(`/feedback?page=${page}&limit=10`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setFeedbacks(data ?? []);
       setHasMore((data?.length ?? 0) === 10);
     } catch (err: unknown) {
       const apiError = err as ApiError;
+      console.error('Erro ao carregar feedbacks:', apiError);
       if (apiError.status === 401) {
+        clearToken();
         router.push('/auth/login');
       } else {
         setError(apiError.message || 'Erro ao carregar feedbacks');
@@ -37,15 +45,16 @@ export default function FeedbackListPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, router, token]);
+  }, [page, router]);
 
   useEffect(() => {
+    const token = getToken();
     if (!token) {
       router.push('/auth/login');
     } else {
       fetchFeedbacks();
     }
-  }, [token, router, fetchFeedbacks]);
+  }, [page, router, fetchFeedbacks]);
 
   const handleNextPage = () => {
     if (hasMore) setPage((prev) => prev + 1);

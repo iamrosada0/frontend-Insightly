@@ -1,19 +1,26 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { jwtDecode } from "jwt-decode";
+import {jwtDecode} from "jwt-decode";
 
 export const TOKEN_KEY = 'insightly_token';
+
+interface JwtPayload {
+  username?: string;
+  sub?: string;
+  exp?: number;
+  iat?: number;
+  [key: string]: unknown; 
+}
 
 export function saveToken(token: string) {
   if (typeof window !== 'undefined') {
     sessionStorage.setItem(TOKEN_KEY, token);
-    console.log('Token salvo:', token); // Debug
+    console.log('Token salvo:', token);
   }
 }
 
 export function getToken(): string | null {
   if (typeof window !== 'undefined') {
     const token = sessionStorage.getItem(TOKEN_KEY);
-    console.log('Lendo token:', token); // Debug
+    console.log('Lendo token:', token);
     return token;
   }
   return null;
@@ -22,7 +29,7 @@ export function getToken(): string | null {
 export function clearToken() {
   if (typeof window !== 'undefined') {
     sessionStorage.removeItem(TOKEN_KEY);
-    console.log('Token removido'); // Debug
+    console.log('Token removido');
   }
 }
 
@@ -34,13 +41,14 @@ export function authHeaders() {
 export function getUsernameFromToken(): string | null {
   if (typeof window === "undefined") return null;
 
-  const token = sessionStorage.getItem(TOKEN_KEY);
+  const token = getToken();
   if (!token) return null;
 
   try {
-    const decoded: any = jwtDecode(token);
-    return decoded.username || decoded.sub || null;
-  } catch {
+    const decoded = jwtDecode<JwtPayload>(token); 
+    return decoded.username ?? decoded.sub ?? null;
+  } catch (err) {
+    console.error('Erro ao decodificar token:', err);
     return null;
   }
 }

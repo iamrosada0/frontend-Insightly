@@ -1,8 +1,6 @@
-// src/components/FeedbackForm.tsx
 'use client';
 
 import { useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { apiFetch, ApiError } from '@/lib/api';
 import { StatusHandler } from '@/components/StatusHandler';
 
@@ -15,7 +13,6 @@ export default function FeedbackForm({ username }: FeedbackFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const router = useRouter();
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {

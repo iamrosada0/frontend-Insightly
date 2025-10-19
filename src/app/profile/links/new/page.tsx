@@ -4,28 +4,29 @@ import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiFetch, ApiError } from '@/lib/api';
 import { CreateLinkForm, CreateLinkFormData, createLinkSchema } from '@/components/CreateLinkForm';
-import { useAuth } from '@/lib/auth-context';
+import { getToken, clearToken } from '@/lib/auth';
 import { Spinner } from '@/components/ui/spinner';
 
 type FormErrors = Partial<Record<keyof CreateLinkFormData | 'form', string>>;
 
 export default function CreateLinkPage({ ...props }: React.ComponentProps<'div'>) {
-  const { token } = useAuth();
   const router = useRouter();
 
   const [formData, setFormData] = useState<CreateLinkFormData>({ title: '', url: '' });
   const [errors, setErrors] = useState<FormErrors>({});
+  const [loading, setLoading] = useState(true); 
   const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(true); // ✅ estado de loading
 
-  // Checa token e redireciona se necessário
   useEffect(() => {
+    const token = getToken();
+
     if (!token) {
       router.push('/auth/login');
-    } else {
-      setLoading(false); // ✅ carregamento concluído
+      return;
     }
-  }, [token, router]);
+
+    setLoading(false);
+  }, [router]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -45,24 +46,33 @@ export default function CreateLinkPage({ ...props }: React.ComponentProps<'div'>
       }
 
       try {
-        if (!token) return; 
+        const token = getToken();
+        if (!token) {
+          setErrors({ form: 'Usuário não autenticado' });
+          router.push('/auth/login');
+          return;
+        }
+
         await apiFetch<void>('/users/links', {
           method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
           body: JSON.stringify(formData),
         });
+
         router.push('/profile/links');
       } catch (err: unknown) {
         const apiError = err as ApiError;
         console.error('Erro ao criar link:', apiError);
         setErrors({ form: apiError.message || 'Erro ao salvar link' });
         if (apiError.status === 401) {
+          clearToken();
           router.push('/auth/login');
         }
       } finally {
         setSaving(false);
       }
     },
-    [formData, router, token],
+    [formData, router],
   );
 
   const handleCancel = useCallback(() => {
@@ -83,7 +93,7 @@ export default function CreateLinkPage({ ...props }: React.ComponentProps<'div'>
         formData={formData}
         errors={errors}
         saving={saving}
-        loading={false} // o loading do form é separado de loading geral
+        loading={false} 
         onChange={setFormData}
         onSubmit={handleSubmit}
         onCancel={handleCancel}

@@ -66,7 +66,6 @@ export default function EditProfilePage() {
       setErrors({});
       setSaving(true);
 
-      // Validação com Zod
       const result = editProfileSchema.safeParse(formData);
       if (!result.success) {
         const fieldErrors = result.error.flatten().fieldErrors;
@@ -110,7 +109,7 @@ export default function EditProfilePage() {
   const handleCancel = useCallback(() => {
     router.push('/profile');
   }, [router]);
-  
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
