@@ -5,20 +5,24 @@ export const TOKEN_KEY = 'insightly_token';
 
 export function saveToken(token: string) {
   if (typeof window !== 'undefined') {
-    localStorage.setItem(TOKEN_KEY, token);
+    sessionStorage.setItem(TOKEN_KEY, token);
+    console.log('Token salvo:', token); // Debug
   }
 }
 
 export function getToken(): string | null {
   if (typeof window !== 'undefined') {
-    return localStorage.getItem(TOKEN_KEY);
+    const token = sessionStorage.getItem(TOKEN_KEY);
+    console.log('Lendo token:', token); // Debug
+    return token;
   }
   return null;
 }
 
 export function clearToken() {
   if (typeof window !== 'undefined') {
-    localStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(TOKEN_KEY);
+    console.log('Token removido'); // Debug
   }
 }
 
@@ -30,7 +34,7 @@ export function authHeaders() {
 export function getUsernameFromToken(): string | null {
   if (typeof window === "undefined") return null;
 
-  const token = localStorage.getItem(TOKEN_KEY);
+  const token = sessionStorage.getItem(TOKEN_KEY);
   if (!token) return null;
 
   try {

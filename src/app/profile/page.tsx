@@ -1,47 +1,34 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { apiFetch, ApiError } from '@/lib/api';
 import { StatusHandler } from '@/components/StatusHandler';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Feedback, UserProfileResponse } from '@/types';
-import { clearToken, getToken } from '@/lib/auth';
+import { clearToken } from '@/lib/auth';
+import { Spinner } from '@/components/ui/spinner';
 
-export default function ProfilePage({ className, searchParams, ...props }: React.ComponentProps<'div'> & { searchParams?: unknown }) {
-  const [feedbacks, setFeedbacks] = useState<Feedback[] | null>(null);
+export default function ProfilePage({ className, ...props }: React.ComponentProps<'div'>) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
   const [profile, setProfile] = useState<UserProfileResponse | null>(null);
+  const [feedbacks, setFeedbacks] = useState<Feedback[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const router = useRouter();
 
-  const fetchProfileAndFeedbacks = useCallback(async () => {
+  const fetchProfileAndFeedbacks = useCallback(async (token: string) => {
     setLoading(true);
     setError(null);
     try {
-      const token = getToken();
-      console.log('Token de autenticação:', token);
-      console.log('Token de autenticação:', localStorage.getItem('insightly_token'));
-
-      if (!token) {
-        router.push('/auth/login');
-        return;
-      }
       const profileData = await apiFetch<UserProfileResponse>('/users/me/profile', {
         headers: { Authorization: `Bearer ${token}` },
-        method: 'GET',
       });
-      console.log('Dados do perfil:', profileData);
       setProfile(profileData ?? null);
 
       const feedbackData = await apiFetch<Feedback[]>(`/feedback?page=${page}&limit=10`, {
@@ -63,8 +50,15 @@ export default function ProfilePage({ className, searchParams, ...props }: React
   }, [page, router]);
 
   useEffect(() => {
-    fetchProfileAndFeedbacks();
-  }, [fetchProfileAndFeedbacks]);
+    // Pega token da URL
+    const token = searchParams.get('token');
+    if (!token) {
+      router.push('/auth/login');
+      return;
+    }
+
+    fetchProfileAndFeedbacks(token);
+  }, [fetchProfileAndFeedbacks, searchParams, router]);
 
   const handleNextPage = () => {
     if (hasMore) setPage((prev) => prev + 1);
@@ -73,6 +67,14 @@ export default function ProfilePage({ className, searchParams, ...props }: React
   const handlePrevPage = () => {
     if (page > 1) setPage((prev) => prev - 1);
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Spinner />
+      </div>
+    );
+  }
 
   return (
     <div className={cn('flex flex-col gap-6 max-w-3xl mx-auto p-6', className)} {...props}>

@@ -44,7 +44,7 @@ export default function LoginForm({ className, ...props }: React.ComponentProps<
           },
         );
         saveToken(response!.accessToken); 
-        router.push('/perfil'); 
+        router.push(`/perfil?token=${encodeURIComponent(response!.accessToken)}`);
       } catch (err: unknown) {
         const apiError = err as ApiError;
         setErro(apiError.message || 'Erro ao fazer login');
