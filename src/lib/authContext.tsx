@@ -16,17 +16,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const storedToken = getToken()
-    console.log('Inicializando token do localStorage:', storedToken);
     setToken(storedToken);
   }, []);
 
   useEffect(() => {
     if (token) {
       saveToken(token);
-      console.log('Token salvo no localStorage:', token);
     } else {
       clearToken();
-      console.log('Token removido do localStorage');
     }
   }, [token]);
 

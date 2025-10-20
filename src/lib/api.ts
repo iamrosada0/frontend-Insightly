@@ -1,6 +1,6 @@
 import { authHeaders } from './auth';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://insightly-alb-570198500.eu-west-2.elb.amazonaws.com/api';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://backend:4000/api';
 
 export interface ApiError extends Error {
   status: number;

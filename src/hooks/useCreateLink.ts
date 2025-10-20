@@ -54,7 +54,6 @@ export function useCreateLink() {
       return true;
     } catch (err: unknown) {
       const apiError = err as ApiError;
-      console.error('Erro ao criar link:', apiError);
       setErrors({ form: apiError.message || 'Erro ao salvar link' });
       if (apiError.status === 401) {
         clearToken();

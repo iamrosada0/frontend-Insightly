@@ -29,7 +29,6 @@ export function useLinks() {
       setLinks(data ?? []);
     } catch (err: unknown) {
       const apiError = err as ApiError;
-      console.error('Erro ao buscar links:', apiError);
       setError(apiError.message || 'Erro desconhecido ao carregar os links.');
       if (apiError.status === 401) redirectToLogin();
     } finally {
@@ -51,7 +50,6 @@ export function useLinks() {
         setLinks((prev) => prev.filter((link) => link.id !== id));
       } catch (err: unknown) {
         const apiError = err as ApiError;
-        console.error('Erro ao excluir link:', apiError);
         setError(apiError.message || 'Erro desconhecido ao excluir o link.');
         if (apiError.status === 401) redirectToLogin();
       }

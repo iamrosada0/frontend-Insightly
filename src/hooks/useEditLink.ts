@@ -45,7 +45,6 @@ export function useEditLink() {
       setFormData({ title: link.title, url: link.url });
     } catch (err: unknown) {
       const apiError = err as ApiError;
-      console.error('Erro ao carregar link:', apiError);
       setErrors({ form: apiError.message || 'Erro ao carregar link' });
       if (apiError.status === 401) redirectToLogin();
       else router.push('/profile/links');
@@ -87,7 +86,6 @@ export function useEditLink() {
       return true;
     } catch (err: unknown) {
       const apiError = err as ApiError;
-      console.error('Erro ao atualizar link:', apiError);
       setErrors({ form: apiError.message || 'Erro ao salvar alterações' });
       if (apiError.status === 401) redirectToLogin();
       return false;

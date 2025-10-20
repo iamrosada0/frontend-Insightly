@@ -13,14 +13,12 @@ interface JwtPayload {
 export function saveToken(token: string) {
   if (typeof window !== 'undefined') {
     sessionStorage.setItem(TOKEN_KEY, token);
-    console.log('Token salvo:', token);
   }
 }
 
 export function getToken(): string | null {
   if (typeof window !== 'undefined') {
     const token = sessionStorage.getItem(TOKEN_KEY);
-    console.log('Lendo token:', token);
     return token;
   }
   return null;
@@ -29,7 +27,6 @@ export function getToken(): string | null {
 export function clearToken() {
   if (typeof window !== 'undefined') {
     sessionStorage.removeItem(TOKEN_KEY);
-    console.log('Token removido');
   }
 }
 

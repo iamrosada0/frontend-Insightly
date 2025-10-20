@@ -29,7 +29,6 @@ export function useEditProfile() {
       setFormData(data ?? { name: '', bio: '' });
     } catch (err: unknown) {
       const apiError = err as ApiError;
-      console.error('Erro ao carregar perfil:', apiError);
       setErrors({ form: apiError.message || 'Erro ao carregar perfil' });
       if (apiError.status === 401) redirectToLogin();
       else router.push('/profile');
@@ -80,7 +79,6 @@ export function useEditProfile() {
       return true;
     } catch (err: unknown) {
       const apiError = err as ApiError;
-      console.error('Erro ao atualizar perfil:', apiError);
       setErrors({ form: apiError.message || 'Erro ao salvar alterações' });
       if (apiError.status === 401) redirectToLogin();
       return false;

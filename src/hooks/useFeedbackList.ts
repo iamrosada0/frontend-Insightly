@@ -46,7 +46,6 @@ export function useFeedbackList(): UseFeedbackListResult {
       setHasMore((data?.length ?? 0) === 10);
     } catch (err: unknown) {
       const apiError = err as ApiError;
-      console.error('Erro ao carregar feedbacks:', apiError);
 
       if (apiError.status === 401) {
         redirectToLogin();

@@ -19,7 +19,6 @@ export default function UserSelectionPage() {
       setUsers(data ?? []);
     } catch (err: unknown) {
       const apiError = err as ApiError;
-      console.error('Erro ao carregar usuários:', apiError);
       setError(apiError.message || 'Erro desconhecido ao carregar usuários.');
     } finally {
       setLoading(false);
