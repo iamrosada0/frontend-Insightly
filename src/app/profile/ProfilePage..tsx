@@ -50,7 +50,6 @@ export default function ProfilePage({
 
           {!loading && !error && profile && (
             <div className="space-y-6">
-              {/* Perfil */}
               <section>
                 <h2 className="text-lg font-semibold">Informações do Perfil</h2>
                 <p>
@@ -89,7 +88,6 @@ export default function ProfilePage({
                 </div>
               </section>
 
-              {/* Feedbacks */}
               <section>
                 <h2 className="text-lg font-semibold">Meus Feedbacks</h2>
 
